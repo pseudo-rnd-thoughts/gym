@@ -62,10 +62,7 @@ class Space(Generic[T_cov]):
         return [seed]
 
     def contains(self, x) -> bool:
-        """
-        Return boolean specifying if x is a valid
-        member of this space
-        """
+        """Return boolean specifying if x is a valid member of this space"""
         raise NotImplementedError
 
     def __contains__(self, x) -> bool:
