@@ -1,15 +1,14 @@
 from __future__ import annotations
 
 from collections import OrderedDict
-from collections.abc import Mapping, Sequence
-from typing import Dict as TypingDict
+from typing import Mapping, Optional, Sequence
 
 import numpy as np
 
 from .space import Space
 
 
-class Dict(Space[TypingDict[str, Space]], Mapping):
+class Dict(Space[dict[str, Space]], Mapping):
     """
     A dictionary of simpler spaces.
 
@@ -41,8 +40,8 @@ class Dict(Space[TypingDict[str, Space]], Mapping):
 
     def __init__(
         self,
-        spaces: dict[str, Space] | None = None,
-        seed: dict | int | None = None,
+        spaces: Optional[dict[str, Space]] = None,
+        seed: Optional[dict | int] = None,
         **spaces_kwargs: Space,
     ):
         assert (spaces is None) or (
@@ -61,25 +60,22 @@ class Dict(Space[TypingDict[str, Space]], Mapping):
 
         assert isinstance(spaces, OrderedDict), "spaces must be a dictionary"
 
-        self.spaces = spaces
+        self.spaces: OrderedDict[str, Space] = spaces
         for space in spaces.values():
             assert isinstance(
                 space, Space
             ), "Values of the dict should be instances of gym.Space"
-        super().__init__(
-            None, None, seed  # type: ignore
-        )  # None for shape and dtype, since it'll require special handling
+        # None for shape and dtype, since it'll require special handling
+        super().__init__(seed=seed)
 
-    def seed(self, seed: dict | int | None = None) -> list:
+    def seed(self, seed: Optional[dict | int] = None) -> list:
+        """Seed the PRNG of this space."""
         seeds = []
         if isinstance(seed, dict):
             for key, seed_key in zip(self.spaces, seed):
-                assert key == seed_key, print(
-                    "Key value",
-                    seed_key,
-                    "in passed seed dict did not match key value",
-                    key,
-                    "in spaces Dict.",
+                assert key == seed_key, (
+                    f"Key value {seed_key} in passed seed dict "
+                    f"did not match key value {key} in spaces Dict."
                 )
                 seeds += self.spaces[key].seed(seed[seed_key])
         elif isinstance(seed, int):
@@ -93,8 +89,7 @@ class Dict(Space[TypingDict[str, Space]], Mapping):
             except ValueError:
                 subseeds = self.np_random.choice(
                     np.iinfo(int).max,
-                    size=len(self.spaces),
-                    replace=True,  # we get more than INT_MAX subspaces
+                    size=len(self.spaces),  # we get more than INT_MAX subspaces
                 )
 
             for subspace, subseed in zip(self.spaces.values(), subseeds):
@@ -108,9 +103,11 @@ class Dict(Space[TypingDict[str, Space]], Mapping):
         return seeds
 
     def sample(self) -> dict:
+        """Randomly sample an element of this space."""
         return OrderedDict([(k, space.sample()) for k, space in self.spaces.items()])
 
-    def contains(self, x) -> bool:
+    def contains(self, x: dict) -> bool:
+        """Return boolean specifying if x is a valid member of this space"""
         if not isinstance(x, dict) or len(x) != len(self.spaces):
             return False
         for k, space in self.spaces.items():
@@ -120,13 +117,13 @@ class Dict(Space[TypingDict[str, Space]], Mapping):
                 return False
         return True
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: str) -> Space:
         return self.spaces[key]
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, key: str, value: Space):
         self.spaces[key] = value
 
-    def __iter__(self):
+    def __iter__(self) -> OrderedDict[str, Space]:
         yield from self.spaces
 
     def __len__(self) -> int:
@@ -134,19 +131,19 @@ class Dict(Space[TypingDict[str, Space]], Mapping):
 
     def __repr__(self) -> str:
         return (
-            "Dict("
-            + ", ".join([str(k) + ":" + str(s) for k, s in self.spaces.items()])
-            + ")"
+            "Dict({" + ", ".join([f"{k}: {s}" for k, s in self.spaces.items()]) + "})"
         )
 
-    def to_jsonable(self, sample_n: list) -> dict:
+    def to_jsonable(self, sample_n: Sequence[dict[str, Space]]) -> dict[str, Sequence]:
+        """Convert a batch of samples from this space to a JSONable data type."""
         # serialize as dict-repr of vectors
         return {
             key: space.to_jsonable([sample[key] for sample in sample_n])
             for key, space in self.spaces.items()
         }
 
-    def from_jsonable(self, sample_n: dict[str, list]) -> list:
+    def from_jsonable(self, sample_n: dict[str, list]) -> list[dict[str, list]]:
+        """Convert a JSONable data type to a batch of samples from this space."""
         dict_of_list: dict[str, list] = {}
         for key, space in self.spaces.items():
             dict_of_list[key] = space.from_jsonable(sample_n[key])
