@@ -3,7 +3,7 @@ from __future__ import annotations
 import operator as op
 from collections import OrderedDict
 from functools import reduce, singledispatch
-from typing import TypeVar, Union
+from typing import TypeVar
 
 import numpy as np
 
@@ -23,7 +23,7 @@ def flatdim(space: Space) -> int:
 
 @flatdim.register(Box)
 @flatdim.register(MultiBinary)
-def _flatdim_box_multibinary(space: Union[Box, MultiBinary]) -> int:
+def _flatdim_box_multibinary(space: Box | MultiBinary) -> int:
     return reduce(op.mul, space.shape, 1)
 
 
@@ -66,19 +66,19 @@ def flatten(space: Space[T], x: T) -> np.ndarray:
 
 @flatten.register(Box)
 @flatten.register(MultiBinary)
-def _flatten_box_multibinary(space, x) -> np.ndarray:
+def _flatten_box_multibinary(space: Box | MultiBinary, x: np.ndarray) -> np.ndarray:
     return np.asarray(x, dtype=space.dtype).flatten()
 
 
 @flatten.register(Discrete)
-def _flatten_discrete(space, x) -> np.ndarray:
+def _flatten_discrete(space: Discrete, x: np.ndarray) -> np.ndarray:
     onehot = np.zeros(space.n, dtype=space.dtype)
     onehot[x - space.start] = 1
     return onehot
 
 
 @flatten.register(MultiDiscrete)
-def _flatten_multidiscrete(space, x) -> np.ndarray:
+def _flatten_multidiscrete(space: MultiDiscrete, x: np.ndarray) -> np.ndarray:
     offsets = np.zeros((space.nvec.size + 1,), dtype=space.dtype)
     offsets[1:] = np.cumsum(space.nvec.flatten())
 
@@ -88,12 +88,12 @@ def _flatten_multidiscrete(space, x) -> np.ndarray:
 
 
 @flatten.register(Tuple)
-def _flatten_tuple(space, x) -> np.ndarray:
+def _flatten_tuple(space: Tuple, x: np.ndarray) -> np.ndarray:
     return np.concatenate([flatten(s, x_part) for x_part, s in zip(x, space.spaces)])
 
 
 @flatten.register(Dict)
-def _flatten_dict(space, x) -> np.ndarray:
+def _flatten_dict(space: Dict, x: np.ndarray) -> np.ndarray:
     return np.concatenate([flatten(s, x[key]) for key, s in space.spaces.items()])
 
 
@@ -202,7 +202,7 @@ def _flatten_space_box(space: Box) -> Box:
 @flatten_space.register(Discrete)
 @flatten_space.register(MultiBinary)
 @flatten_space.register(MultiDiscrete)
-def _flatten_space_binary(space: Union[Discrete, MultiBinary, MultiDiscrete]) -> Box:
+def _flatten_space_binary(space: Discrete | MultiBinary | MultiDiscrete) -> Box:
     return Box(low=0, high=1, shape=(flatdim(space),), dtype=space.dtype)
 
 
