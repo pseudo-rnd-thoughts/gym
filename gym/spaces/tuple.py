@@ -1,5 +1,6 @@
-from collections.abc import Sequence
-from typing import Iterable, List, Optional, Union
+from __future__ import annotations
+
+from typing import Iterable, Optional, Sequence
 
 import numpy as np
 
@@ -14,18 +15,17 @@ class Tuple(Space[tuple], Sequence):
     self.observation_space = spaces.Tuple((spaces.Discrete(2), spaces.Discrete(3)))
     """
 
-    def __init__(
-        self, spaces: Iterable[Space], seed: Optional[Union[int, List[int]]] = None
-    ):
+    def __init__(self, spaces: Iterable[Space], seed: Optional[int | list[int]] = None):
         spaces = tuple(spaces)
         self.spaces = spaces
         for space in spaces:
             assert isinstance(
                 space, Space
             ), "Elements of the tuple must be instances of gym.Space"
-        super().__init__(None, None, seed)  # type: ignore
+        super().__init__(seed=seed)  # type: ignore
 
-    def seed(self, seed: Optional[Union[int, List[int]]] = None) -> list:
+    def seed(self, seed: Optional[int | list[int]] = None) -> list:
+        """Seed the PRNG of this space."""
         seeds = []
 
         if isinstance(seed, list):
@@ -42,8 +42,7 @@ class Tuple(Space[tuple], Sequence):
             except ValueError:
                 subseeds = self.np_random.choice(
                     np.iinfo(int).max,
-                    size=len(self.spaces),
-                    replace=True,  # we get more than INT_MAX subspaces
+                    size=len(self.spaces),  # we get more than INT_MAX subspaces
                 )
 
             for subspace, subseed in zip(self.spaces, subseeds):
@@ -57,9 +56,11 @@ class Tuple(Space[tuple], Sequence):
         return seeds
 
     def sample(self) -> tuple:
+        """Randomly sample an element of this space."""
         return tuple(space.sample() for space in self.spaces)
 
     def contains(self, x) -> bool:
+        """Return boolean specifying if x is a valid member of this space"""
         if isinstance(x, (list, np.ndarray)):
             x = tuple(x)  # Promote list and ndarray to tuple for contains check
         return (
@@ -71,14 +72,16 @@ class Tuple(Space[tuple], Sequence):
     def __repr__(self) -> str:
         return "Tuple(" + ", ".join([str(s) for s in self.spaces]) + ")"
 
-    def to_jsonable(self, sample_n) -> list:
+    def to_jsonable(self, sample_n: Sequence) -> list:
+        """Convert a batch of samples from this space to a JSONable data type."""
         # serialize as list-repr of tuple of vectors
         return [
             space.to_jsonable([sample[i] for sample in sample_n])
             for i, space in enumerate(self.spaces)
         ]
 
-    def from_jsonable(self, sample_n) -> list:
+    def from_jsonable(self, sample_n: list) -> list:
+        """Convert a JSONable data type to a batch of samples from this space."""
         return [
             sample
             for sample in zip(
