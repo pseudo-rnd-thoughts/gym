@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
+from typing import Optional, Sequence
 
 import numpy as np
 
@@ -31,7 +31,12 @@ class MultiDiscrete(Space[np.ndarray]):
 
     """
 
-    def __init__(self, nvec: list[int], dtype=np.int64, seed=None):
+    def __init__(
+        self,
+        nvec: list[int] | np.ndarray,
+        dtype: np.dtype = np.int64,
+        seed: Optional[int] = None,
+    ):
         """
         nvec: vector of counts of each categorical variable
         """
@@ -46,25 +51,29 @@ class MultiDiscrete(Space[np.ndarray]):
         return self._shape  # type: ignore
 
     def sample(self) -> np.ndarray:
+        """Randomly sample an element of this space."""
         return (self.np_random.random(self.nvec.shape) * self.nvec).astype(self.dtype)
 
-    def contains(self, x) -> bool:
+    def contains(self, x: Sequence | np.ndarray) -> bool:
+        """Return boolean specifying if x is a valid member of this space"""
         if isinstance(x, Sequence):
             x = np.array(x)  # Promote list to array for contains check
         # if nvec is uint32 and space dtype is uint32, then 0 <= x < self.nvec guarantees that x
         # is within correct bounds for space dtype (even though x does not have to be unsigned)
         return bool(x.shape == self.shape and (0 <= x).all() and (x < self.nvec).all())
 
-    def to_jsonable(self, sample_n):
+    def to_jsonable(self, sample_n: Sequence[np.ndarray]) -> list[list]:
+        """Convert a batch of samples from this space to a JSONable data type."""
         return [sample.tolist() for sample in sample_n]
 
-    def from_jsonable(self, sample_n):
+    def from_jsonable(self, sample_n: list) -> np.ndarray:
+        """Convert a JSONable data type to a batch of samples from this space."""
         return np.array(sample_n)
 
     def __repr__(self):
         return f"MultiDiscrete({self.nvec})"
 
-    def __getitem__(self, index):
+    def __getitem__(self, index: int):
         nvec = self.nvec[index]
         if nvec.ndim == 0:
             subspace = Discrete(nvec)
