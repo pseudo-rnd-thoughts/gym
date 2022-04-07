@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Optional, Sequence, SupportsFloat, Tuple, Type, Union
+from typing import Optional, Sequence, SupportsFloat, Type
 
 import numpy as np
 
@@ -40,8 +40,8 @@ class Box(Space[np.ndarray]):
 
     def __init__(
         self,
-        low: Union[SupportsFloat, np.ndarray],
-        high: Union[SupportsFloat, np.ndarray],
+        low: SupportsFloat | np.ndarray,
+        high: SupportsFloat | np.ndarray,
         shape: Optional[Sequence[int]] = None,
         dtype: Type = np.float32,
         seed: Optional[int] = None,
@@ -56,6 +56,8 @@ class Box(Space[np.ndarray]):
             shape = low.shape  # type: ignore
         elif not np.isscalar(high):
             shape = high.shape  # type: ignore
+        elif np.isscalar(low) and np.isscalar(high):
+            shape = ()
         else:
             raise ValueError(
                 "shape must be provided or inferred from the shapes of low or high"
@@ -76,7 +78,7 @@ class Box(Space[np.ndarray]):
         assert isinstance(high, np.ndarray)
         assert high.shape == shape, "high.shape doesn't match provided shape"
 
-        self._shape: Tuple[int, ...] = shape
+        self._shape: tuple[int, ...] = shape
 
         low_precision = get_precision(low.dtype)
         high_precision = get_precision(high.dtype)
@@ -92,11 +94,12 @@ class Box(Space[np.ndarray]):
         super().__init__(self.shape, self.dtype, seed)
 
     @property
-    def shape(self) -> Tuple[int, ...]:
+    def shape(self) -> tuple[int, ...]:
         """Has stricter type than gym.Space - never None."""
         return self._shape
 
     def is_bounded(self, manner: str = "both") -> bool:
+        """Is the box bounded from 'both', 'below' and 'above'"""
         below = bool(np.all(self.bounded_below))
         above = bool(np.all(self.bounded_above))
         if manner == "both":
@@ -110,7 +113,7 @@ class Box(Space[np.ndarray]):
 
     def sample(self) -> np.ndarray:
         """
-        Generates a single random sample inside of the Box.
+        Generates a single random sample within the Box.
 
         In creating a sample of the box, each coordinate is sampled according to
         the form of the interval:
@@ -152,6 +155,7 @@ class Box(Space[np.ndarray]):
         return sample.astype(self.dtype)
 
     def contains(self, x) -> bool:
+        """Return boolean specifying if x is a valid member of this space"""
         if not isinstance(x, np.ndarray):
             logger.warn("Casting input x to numpy array.")
             x = np.asarray(x, dtype=self.dtype)
@@ -163,10 +167,12 @@ class Box(Space[np.ndarray]):
             and np.all(x <= self.high)
         )
 
-    def to_jsonable(self, sample_n):
+    def to_jsonable(self, sample_n: Sequence[np.ndarray]):
+        """Convert a batch of samples from this space to a JSONable data type."""
         return np.array(sample_n).tolist()
 
     def from_jsonable(self, sample_n: Sequence[SupportsFloat]) -> list[np.ndarray]:
+        """Convert a JSONable data type to a batch of samples from this space."""
         return [np.asarray(sample) for sample in sample_n]
 
     def __repr__(self) -> str:
@@ -181,7 +187,7 @@ class Box(Space[np.ndarray]):
         )
 
 
-def get_inf(dtype, sign: str) -> SupportsFloat:
+def get_inf(dtype: np.dtype, sign: str) -> SupportsFloat:
     """Returns an infinite that doesn't break things.
     `dtype` must be an `np.dtype`
     `bound` must be either `min` or `max`
@@ -204,7 +210,11 @@ def get_inf(dtype, sign: str) -> SupportsFloat:
         raise ValueError(f"Unknown dtype {dtype} for infinite bounds")
 
 
-def get_precision(dtype) -> SupportsFloat:
+def get_precision(dtype: np.dtype) -> SupportsFloat:
+    """
+    Gets the precision of the dtype provided, if the type is a subtype of
+    np.floating then the precision is returned, otherwise, np.inf is returned
+    """
     if np.issubdtype(dtype, np.floating):
         return np.finfo(dtype).precision
     else:
@@ -212,8 +222,8 @@ def get_precision(dtype) -> SupportsFloat:
 
 
 def _broadcast(
-    value: Union[SupportsFloat, np.ndarray],
-    dtype,
+    value: SupportsFloat | np.ndarray,
+    dtype: np.dtype,
     shape: tuple[int, ...],
     inf_sign: str,
 ) -> np.ndarray:
