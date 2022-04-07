@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 from collections import OrderedDict
 from functools import singledispatch
+from typing import Iterable, Sequence
 
 import numpy as np
 
@@ -11,7 +14,7 @@ __all__ = ["_BaseGymSpaces", "batch_space", "iterate"]
 
 
 @singledispatch
-def batch_space(space, n=1):
+def batch_space(space: Space, n: int = 1):
     """Create a (batched) space, containing multiple copies of a single space.
 
     Parameters
@@ -44,14 +47,14 @@ def batch_space(space, n=1):
 
 
 @batch_space.register(Box)
-def _batch_space_box(space, n=1):
+def _batch_space_box(space: Box, n: int = 1) -> Box:
     repeats = tuple([n] + [1] * space.low.ndim)
     low, high = np.tile(space.low, repeats), np.tile(space.high, repeats)
     return Box(low=low, high=high, dtype=space.dtype)
 
 
 @batch_space.register(Discrete)
-def _batch_space_discrete(space, n=1):
+def _batch_space_discrete(space: Discrete, n: int = 1) -> MultiDiscrete | Box:
     if space.start == 0:
         return MultiDiscrete(np.full((n,), space.n, dtype=space.dtype))
     else:
@@ -64,24 +67,24 @@ def _batch_space_discrete(space, n=1):
 
 
 @batch_space.register(MultiDiscrete)
-def _batch_space_multidiscrete(space, n=1):
+def _batch_space_multidiscrete(space: MultiDiscrete, n: int = 1) -> Box:
     repeats = tuple([n] + [1] * space.nvec.ndim)
     high = np.tile(space.nvec, repeats) - 1
     return Box(low=np.zeros_like(high), high=high, dtype=space.dtype)
 
 
 @batch_space.register(MultiBinary)
-def _batch_space_multibinary(space, n=1):
+def _batch_space_multibinary(space: MultiBinary, n: int = 1) -> Box:
     return Box(low=0, high=1, shape=(n,) + space.shape, dtype=space.dtype)
 
 
 @batch_space.register(Tuple)
-def _batch_space_tuple(space, n=1):
+def _batch_space_tuple(space: Tuple, n: int = 1) -> Tuple:
     return Tuple(tuple(batch_space(subspace, n=n) for subspace in space.spaces))
 
 
 @batch_space.register(Dict)
-def _batch_space_dict(space, n=1):
+def _batch_space_dict(space: Dict, n: int = 1) -> Dict:
     return Dict(
         OrderedDict(
             [
@@ -93,12 +96,12 @@ def _batch_space_dict(space, n=1):
 
 
 @batch_space.register(Space)
-def _batch_space_custom(space, n=1):
+def _batch_space_custom(space: Space, n: int = 1) -> Tuple:
     return Tuple(tuple(space for _ in range(n)))
 
 
 @singledispatch
-def iterate(space, items):
+def iterate(space: Space, items: Iterable) -> Iterable:
     """Iterate over the elements of a (batched) space.
 
     Parameters
@@ -137,14 +140,16 @@ def iterate(space, items):
 
 
 @iterate.register(Discrete)
-def _iterate_discrete(space, items):
+def _iterate_discrete(space: Discrete, items: Iterable):
     raise TypeError("Unable to iterate over a space of type `Discrete`.")
 
 
 @iterate.register(Box)
 @iterate.register(MultiDiscrete)
 @iterate.register(MultiBinary)
-def _iterate_base(space, items):
+def _iterate_base(
+    space: Box | MultiDiscrete | MultiBinary, items: Iterable
+) -> Iterable:
     try:
         return iter(items)
     except TypeError:
@@ -152,7 +157,7 @@ def _iterate_base(space, items):
 
 
 @iterate.register(Tuple)
-def _iterate_tuple(space, items):
+def _iterate_tuple(space: Tuple, items: Iterable | Sequence) -> Iterable:
     # If this is a tuple of custom subspaces only, then simply iterate over items
     if all(
         isinstance(subspace, Space)
@@ -167,7 +172,7 @@ def _iterate_tuple(space, items):
 
 
 @iterate.register(Dict)
-def _iterate_dict(space, items):
+def _iterate_dict(space: Dict, items: dict) -> Iterable:
     keys, values = zip(
         *[
             (key, iterate(subspace, items[key]))
@@ -179,7 +184,7 @@ def _iterate_dict(space, items):
 
 
 @iterate.register(Space)
-def _iterate_custom(space, items):
+def _iterate_custom(space: Space, items: Iterable):
     raise CustomSpaceError(
         f"Unable to iterate over {items}, since {space} "
         "is a custom `gym.Space` instance (i.e. not one of "
