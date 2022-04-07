@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Optional, Sequence
+from typing import Optional, Sequence, Type
 
 import numpy as np
 
@@ -34,14 +34,14 @@ class MultiDiscrete(Space[np.ndarray]):
     def __init__(
         self,
         nvec: list[int] | np.ndarray,
-        dtype: np.dtype = np.int64,
+        dtype: Optional[Type] = np.int64,
         seed: Optional[int] = None,
     ):
         """
         nvec: vector of counts of each categorical variable
         """
         self.nvec = np.array(nvec, dtype=dtype, copy=True)
-        assert (self.nvec > 0).all(), "nvec (counts) have to be positive"
+        assert (self.nvec > 0).all(), f"nvec (counts) have to be positive: {self.nvec}"
 
         super().__init__(self.nvec.shape, dtype, seed)
 
