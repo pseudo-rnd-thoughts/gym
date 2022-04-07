@@ -1,4 +1,6 @@
-from typing import Optional
+from __future__ import annotations
+
+from typing import Iterable, Mapping, Optional
 
 import numpy as np
 
@@ -26,9 +28,11 @@ class Discrete(Space[int]):
         super().__init__((), np.int64, seed)
 
     def sample(self) -> int:
+        """Randomly sample an element of this space."""
         return int(self.start + self.np_random.integers(self.n))
 
-    def contains(self, x) -> bool:
+    def contains(self, x: int | np.generic | np.ndarray) -> bool:
+        """Return boolean specifying if x is a valid member of this space"""
         if isinstance(x, int):
             as_int = x
         elif isinstance(x, (np.generic, np.ndarray)) and (
@@ -41,8 +45,8 @@ class Discrete(Space[int]):
 
     def __repr__(self) -> str:
         if self.start != 0:
-            return "Discrete(%d, start=%d)" % (self.n, self.start)
-        return "Discrete(%d)" % self.n
+            return f"Discrete({self.n}, start={self.start})"
+        return f"Discrete({self.n})"
 
     def __eq__(self, other) -> bool:
         return (
@@ -51,7 +55,7 @@ class Discrete(Space[int]):
             and self.start == other.start
         )
 
-    def __setstate__(self, state):
+    def __setstate__(self, state: Iterable | Mapping):
         super().__setstate__(state)
 
         # Don't mutate the original state
