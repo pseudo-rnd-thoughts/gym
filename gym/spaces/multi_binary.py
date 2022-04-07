@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Optional, Sequence, Union
+from typing import Optional, Sequence
 
 import numpy as np
 
@@ -31,9 +31,7 @@ class MultiBinary(Space[np.ndarray]):
 
     """
 
-    def __init__(
-        self, n: Union[np.ndarray, Sequence[int], int], seed: Optional[int] = None
-    ):
+    def __init__(self, n: np.ndarray | Sequence[int] | int, seed: Optional[int] = None):
         if isinstance(n, (Sequence, np.ndarray)):
             self.n = input_n = tuple(int(i) for i in n)
         else:
@@ -50,19 +48,23 @@ class MultiBinary(Space[np.ndarray]):
         return self._shape  # type: ignore
 
     def sample(self) -> np.ndarray:
+        """Randomly sample an element of this space."""
         return self.np_random.integers(low=0, high=2, size=self.n, dtype=self.dtype)
 
-    def contains(self, x) -> bool:
+    def contains(self, x: Sequence | np.ndarray) -> bool:
+        """Return boolean specifying if x is a valid member of this space"""
         if isinstance(x, Sequence):
             x = np.array(x)  # Promote list to array for contains check
         if self.shape != x.shape:
             return False
         return ((x == 0) | (x == 1)).all()
 
-    def to_jsonable(self, sample_n) -> list:
+    def to_jsonable(self, sample_n: Sequence[np.ndarray]) -> list:
+        """Convert a batch of samples from this space to a JSONable data type."""
         return np.array(sample_n).tolist()
 
-    def from_jsonable(self, sample_n) -> list:
+    def from_jsonable(self, sample_n: list) -> list[np.ndarray]:
+        """Convert a JSONable data type to a batch of samples from this space."""
         return [np.asarray(sample) for sample in sample_n]
 
     def __repr__(self) -> str:
