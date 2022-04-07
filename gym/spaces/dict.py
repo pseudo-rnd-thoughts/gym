@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import OrderedDict
-from typing import Mapping, Optional, Sequence
+from typing import Generator, Mapping, Optional, Sequence
 
 import numpy as np
 
@@ -66,7 +66,9 @@ class Dict(Space[dict[str, Space]], Mapping):
                 space, Space
             ), "Values of the dict should be instances of gym.Space"
         # None for shape and dtype, since it'll require special handling
-        super().__init__(seed=seed)
+        super().__init__()
+        if seed is not None:
+            self.seed(seed)
 
     def seed(self, seed: Optional[dict | int] = None) -> list:
         """Seed the PRNG of this space."""
@@ -123,7 +125,7 @@ class Dict(Space[dict[str, Space]], Mapping):
     def __setitem__(self, key: str, value: Space):
         self.spaces[key] = value
 
-    def __iter__(self) -> OrderedDict[str, Space]:
+    def __iter__(self) -> Generator[str]:
         yield from self.spaces
 
     def __len__(self) -> int:
