@@ -17,9 +17,8 @@ class Tuple(Space[tuple], Sequence):
     """
 
     def __init__(self, spaces: Iterable[Space], seed: Optional[int | list[int]] = None):
-        spaces = tuple(spaces)
-        self.spaces = spaces
-        for space in spaces:
+        self.spaces: tuple[Space, ...] = tuple(spaces)
+        for space in self.spaces:
             assert isinstance(
                 space, Space
             ), "Elements of the tuple must be instances of gym.Space"
