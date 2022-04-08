@@ -22,7 +22,9 @@ class Tuple(Space[tuple], Sequence):
             assert isinstance(
                 space, Space
             ), "Elements of the tuple must be instances of gym.Space"
-        super().__init__(seed=seed)  # type: ignore
+        super().__init__()
+        if seed is not None:
+            self.seed(seed)
 
     def seed(self, seed: Optional[int | list[int]] = None) -> list:
         """Seed the PRNG of this space."""
