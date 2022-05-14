@@ -1,5 +1,7 @@
-"""classic Acrobot task"""
-from typing import Optional
+"""classic Acrobot task."""
+from __future__ import annotations
+
+from typing import Optional, Union
 
 import numpy as np
 from numpy import cos, pi, sin
@@ -7,7 +9,7 @@ from numpy import cos, pi, sin
 from gym import core, spaces
 from gym.error import DependencyNotInstalled
 
-__copyright__ = "Copyright 2013, RLPy http://acl.mit.edu/RLPy"
+__copyright__ = "Copyright 2013, RLPy https://github.com/rlpy/rlpy"
 __credits__ = [
     "Alborz Geramifard",
     "Robert H. Klein",
@@ -23,110 +25,106 @@ __author__ = "Christoph Dann <cdann@cdann.de>"
 
 
 class AcrobotEnv(core.Env):
-    """
-    ### Description
+    """Acrobot environment.
 
-    The Acrobot environment is based on Sutton's work in
-    ["Generalization in Reinforcement Learning: Successful Examples Using Sparse Coarse Coding"](https://papers.nips.cc/paper/1995/hash/8f1d43620bc6bb580df6e80b0dc05c48-Abstract.html)
-    and [Sutton and Barto's book](http://www.incompleteideas.net/book/the-book-2nd.html).
-    The system consists of two links connected linearly to form a chain, with one end of
-    the chain fixed. The joint between the two links is actuated. The goal is to apply
-    torques on the actuated joint to swing the free end of the linear chain above a
-    given height while starting from the initial state of hanging downwards.
+    Description:
+        The Acrobot environment is based on Sutton's work in
+        ["Generalization in Reinforcement Learning: Successful Examples Using Sparse Coarse Coding"](https://papers.nips.cc/paper/1995/hash/8f1d43620bc6bb580df6e80b0dc05c48-Abstract.html)
+        and [Sutton and Barto's book](http://www.incompleteideas.net/book/the-book-2nd.html).
+        The system consists of two links connected linearly to form a chain, with one end of
+        the chain fixed. The joint between the two links is actuated. The goal is to apply
+        torques on the actuated joint to swing the free end of the linear chain above a
+        given height while starting from the initial state of hanging downwards.
 
-    As seen in the **Gif**: two blue links connected by two green joints. The joint in
-    between the two links is actuated. The goal is to swing the free end of the outer-link
-    to reach the target height (black horizontal line above system) by applying torque on
-    the actuator.
+        As seen in the **Gif**: two blue links connected by two green joints. The joint in
+        between the two links is actuated. The goal is to swing the free end of the outer-link
+        to reach the target height (black horizontal line above system) by applying torque on
+        the actuator.
 
-    ### Action Space
+    Action Space:
+        The action is discrete, deterministic, and represents the torque applied on the actuated
+        joint between the two links.
 
-    The action is discrete, deterministic, and represents the torque applied on the actuated
-    joint between the two links.
+        | Num | Action                                             | Unit               |
+        |----|-------------------------------------------|---------------|
+        | 0   | apply -1 torque to the actuated joint | torque (N m) |
+        | 1   | apply 0 torque to the actuated joint  | torque (N m) |
+        | 2   | apply 1 torque to the actuated joint  | torque (N m) |
 
-    | Num | Action                                             | Unit               |
-    |----|-------------------------------------------|---------------|
-    | 0   | apply -1 torque to the actuated joint | torque (N m) |
-    | 1   | apply 0 torque to the actuated joint  | torque (N m) |
-    | 2   | apply 1 torque to the actuated joint  | torque (N m) |
+    Observation Space:
+        The observation is a `ndarray` with shape `(6,)` that provides information about the
+        two rotational joint angles as well as their angular velocities:
 
-    ### Observation Space
+        | Num | Observation                  | Min                 | Max               |
+        |-----|------------------------------|---------------------|-------------------|
+        | 0   | Cosine of `theta1`           | -1                  | 1                 |
+        | 1   | Sine of `theta1`             | -1                  | 1                 |
+        | 2   | Cosine of `theta2`           | -1                  | 1                 |
+        | 3   | Sine of `theta2`             | -1                  | 1                 |
+        | 4   | Angular velocity of `theta1` | ~ -12.567 (-4 * pi) | ~ 12.567 (4 * pi) |
+        | 5   | Angular velocity of `theta2` | ~ -28.274 (-9 * pi) | ~ 28.274 (9 * pi) |
 
-    The observation is a `ndarray` with shape `(6,)` that provides information about the
-    two rotational joint angles as well as their angular velocities:
+        where
+        - `theta1` is the angle of the first joint, where an angle of 0 indicates the
+          first link is pointing directly downwards.
+        - `theta2` is ***relative to the angle of the first link.*** An angle of 0 corresponds
+          to having the same angle between the two links.
 
-    | Num | Observation           | Min                  | Max                |
-    |-----|-----------------------|----------------------|--------------------|
-    | 0   | Cosine of `theta1`         | -1                 | 1                |
-    | 1   | Sine of `theta1`         | -1                 | 1                |
-    | 2   | Cosine of `theta2`            | -1 | 1 |
-    | 3   | Sine of `theta2`            | -1 | 1 |
-    | 4   | Angular velocity of `theta1` |        ~ -12.567 (-4 * pi)         |      ~ 12.567 (4 * pi)   |
-    | 5   | Angular velocity of `theta2` |        ~ -28.274 (-9 * pi)         |      ~ 28.274 (9 * pi)   |
+        The angular velocities of `theta1` and `theta2` are bounded at ±4π, and ±9π rad/s respectively.
+        A state of `[1, 0, 1, 0, ..., ...]` indicates that both links are pointing downwards.
 
-    where
-    - `theta1` is the angle of the first joint, where an angle of 0 indicates the first link is pointing directly
-    downwards.
-    - `theta2` is ***relative to the angle of the first link.*** An angle of 0 corresponds to having the same angle between the
-    two links.
+    Rewards:
+        The goal is to have the free end reach a designated target height in as few steps as possible,
+        and as such all steps that do not reach the goal incur a reward of -1.
+        Achieving the target height results in termination with a reward of 0. The reward threshold is -100.
 
-    The angular velocities of `theta1` and `theta2` are bounded at ±4π, and ±9π rad/s respectively.
-    A state of `[1, 0, 1, 0, ..., ...]` indicates that both links are pointing downwards.
+    Starting State:
+        Each parameter in the underlying state (`theta1`, `theta2`, and the two angular velocities)
+        is initialized uniformly between -0.1 and 0.1.
+        This means both links are pointing downwards with some initial stochasticity.
 
-    ### Rewards
+    Episode Termination:
+        The episode terminates if one of the following occurs:
+        1. The free end reaches the target height, which is constructed as:
+        `-cos(theta1) - cos(theta2 + theta1) > 1.0`
+        2. Episode length is greater than 500 (200 for v0)
 
-    The goal is to have the free end reach a designated target height in as few steps as possible, and as such all steps that do not reach the goal incur a reward of -1. Achieving the target height results in termination with a reward of 0. The reward threshold is -100.
+    Arguments:
+        No additional arguments are currently supported.
+        ```
+        env = gym.make('Acrobot-v1')
+        ```
 
-    ### Starting State
+        By default, the dynamics of the acrobot follow those described in Sutton and Barto's book
+        [Reinforcement Learning: An Introduction](http://incompleteideas.net/book/11/node4.html).
+        However, a `book_or_nips` parameter can be modified to change the pendulum dynamics to those described
+        in the original [NeurIPS paper](https://papers.nips.cc/paper/1995/hash/8f1d43620bc6bb580df6e80b0dc05c48-Abstract.html).
 
-    Each parameter in the underlying state (`theta1`, `theta2`, and the two angular velocities) is initialized
-    uniformly between -0.1 and 0.1. This means both links are pointing downwards with some initial stochasticity.
+        ```
+        # To change the dynamics as described above
+        env.env.book_or_nips = 'nips'
+        ```
 
-    ### Episode Termination
+        See the following note and the
+        [implementation](https://github.com/openai/gym/blob/master/gym/envs/classic_control/acrobot.py) for details:
 
-    The episode terminates if one of the following occurs:
-    1. The free end reaches the target height, which is constructed as:
-    `-cos(theta1) - cos(theta2 + theta1) > 1.0`
-    2. Episode length is greater than 500 (200 for v0)
+            The dynamics equations were missing some terms in the NIPS paper which are present in the book.
+            R. Sutton confirmed in personal correspondence that the experimental results shown in the paper
+            and the book were generated with the equations shown in the book.
+            However, there is the option to run the domain with the paper equations by setting `book_or_nips = 'nips'`
 
-    ### Arguments
+    Version History:
+        - v1: Maximum number of steps increased from 200 to 500. The observation space for v0 provided
+          direct readings of `theta1` and `theta2` in radians, having a range of `[-pi, pi]`.
+          The v1 observation space as described here provides the sine and cosine of each angle instead.
+        - v0: Initial versions release (1.0.0) (removed from gym for v1)
 
-    No additional arguments are currently supported.
-
-    ```
-    env = gym.make('Acrobot-v1')
-    ```
-
-    By default, the dynamics of the acrobot follow those described in Sutton and Barto's book
-    [Reinforcement Learning: An Introduction](http://incompleteideas.net/book/11/node4.html). However, a `book_or_nips` parameter can be modified to change the pendulum dynamics to those described
-    in the original [NeurIPS paper](https://papers.nips.cc/paper/1995/hash/8f1d43620bc6bb580df6e80b0dc05c48-Abstract.html).
-
-    ```
-    # To change the dynamics as described above
-    env.env.book_or_nips = 'nips'
-    ```
-
-    See the following note and
-    the [implementation](https://github.com/openai/gym/blob/master/gym/envs/classic_control/acrobot.py) for details:
-
-    > The dynamics equations were missing some terms in the NIPS paper which
-            are present in the book. R. Sutton confirmed in personal correspondence
-            that the experimental results shown in the paper and the book were
-            generated with the equations shown in the book.
-            However, there is the option to run the domain with the paper equations
-            by setting `book_or_nips = 'nips'`
-
-
-    ### Version History
-
-    - v1: Maximum number of steps increased from 200 to 500. The observation space for v0 provided direct readings of
-    `theta1` and `theta2` in radians, having a range of `[-pi, pi]`. The v1 observation space as described here provides the
-    sine and cosine of each angle instead.
-    - v0: Initial versions release (1.0.0) (removed from gym for v1)
-
-    ### References
-    - Sutton, R. S. (1996). Generalization in Reinforcement Learning: Successful Examples Using Sparse Coarse Coding. In D. Touretzky, M. C. Mozer, & M. Hasselmo (Eds.), Advances in Neural Information Processing Systems (Vol. 8). MIT Press. https://proceedings.neurips.cc/paper/1995/file/8f1d43620bc6bb580df6e80b0dc05c48-Paper.pdf
-    - Sutton, R. S., Barto, A. G. (2018 ). Reinforcement Learning: An Introduction. The MIT Press.
+    References:
+        - Sutton, R. S. (1996). Generalization in Reinforcement Learning:
+          Successful Examples Using Sparse Coarse Coding. In D. Touretzky, M. C. Mozer, & M. Hasselmo (Eds.),
+          Advances in Neural Information Processing Systems (Vol. 8). MIT Press.
+          https://proceedings.neurips.cc/paper/1995/file/8f1d43620bc6bb580df6e80b0dc05c48-Paper.pdf
+        - Sutton, R. S., Barto, A. G. (2018 ). Reinforcement Learning: An Introduction. The MIT Press.
     """
 
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 15}
@@ -157,6 +155,7 @@ class AcrobotEnv(core.Env):
     actions_num = 3
 
     def __init__(self):
+        """Initialises the environment."""
         self.screen = None
         self.clock = None
         self.isopen = True
@@ -173,8 +172,9 @@ class AcrobotEnv(core.Env):
         *,
         seed: Optional[int] = None,
         return_info: bool = False,
-        options: Optional[dict] = None
+        options: Optional[dict] = None,
     ):
+        """Resets the environment."""
         super().reset(seed=seed)
         self.state = self.np_random.uniform(low=-0.1, high=0.1, size=(4,)).astype(
             np.float32
@@ -185,6 +185,7 @@ class AcrobotEnv(core.Env):
             return self._get_ob(), {}
 
     def step(self, a):
+        """Steps through the environment."""
         s = self.state
         assert s is not None, "Call reset before using AcrobotEnv object."
         torque = self.AVAIL_TORQUE[a]
@@ -208,7 +209,7 @@ class AcrobotEnv(core.Env):
         self.state = ns
         terminal = self._terminal()
         reward = -1.0 if not terminal else 0.0
-        return (self._get_ob(), reward, terminal, {})
+        return self._get_ob(), reward, terminal, {}
 
     def _get_ob(self):
         s = self.state
@@ -252,19 +253,18 @@ class AcrobotEnv(core.Env):
             + phi2
         )
         if self.book_or_nips == "nips":
-            # the following line is consistent with the description in the
-            # paper
+            # the following line is consistent with the description in the paper
             ddtheta2 = (a + d2 / d1 * phi1 - phi2) / (m2 * lc2**2 + I2 - d2**2 / d1)
         else:
-            # the following line is consistent with the java implementation and the
-            # book
+            # the following line is consistent with the java implementation and the book
             ddtheta2 = (
                 a + d2 / d1 * phi1 - m2 * l1 * lc2 * dtheta1**2 * sin(theta2) - phi2
             ) / (m2 * lc2**2 + I2 - d2**2 / d1)
         ddtheta1 = -(d2 * ddtheta2 + phi1) / d1
-        return (dtheta1, dtheta2, ddtheta1, ddtheta2, 0.0)
+        return dtheta1, dtheta2, ddtheta1, ddtheta2, 0.0
 
-    def render(self, mode="human"):
+    def render(self, mode: str = "human"):
+        """Renders the environment."""
         try:
             import pygame
             from pygame import gfxdraw
@@ -345,6 +345,7 @@ class AcrobotEnv(core.Env):
             return self.isopen
 
     def close(self):
+        """Closes the screen if it has been opened."""
         if self.screen is not None:
             import pygame
 
@@ -353,10 +354,12 @@ class AcrobotEnv(core.Env):
             self.isopen = False
 
 
-def wrap(x, m, M):
-    """Wraps ``x`` so m <= x <= M; but unlike ``bound()`` which
-    truncates, ``wrap()`` wraps x around the coordinate system defined by m,M.\n
-    For example, m = -180, M = 180 (degrees), x = 360 --> returns 0.
+def wrap(x: float, m: float, M: float) -> float:
+    """Wraps a scalar ``x`` with minimum value ``m`` and maximum value ``M``.
+
+    Wraps ``x`` so :math:`m <= x <= M`; but unlike :func:`bound` which truncates,
+    :func:`wrap` wraps ``x`` around the coordinate system defined by ``m``,``M``.
+    For example, `m = -180`, `M = 180` (degrees), `x = 360` -> returns `0`.
 
     Args:
         x: a scalar
@@ -364,7 +367,7 @@ def wrap(x, m, M):
         M: maximum possible value in range
 
     Returns:
-        x: a scalar, wrapped
+        The scalar x wrapped
     """
     diff = M - m
     while x > M:
@@ -374,15 +377,19 @@ def wrap(x, m, M):
     return x
 
 
-def bound(x, m, M=None):
-    """Either have m as scalar, so bound(x,m,M) which returns m <= x <= M *OR*
+def bound(x: float, m: Union[float, tuple[float, float]], M: Optional[float] = None):
+    """Bounds a scalar x to within m and M.
+
+    Either have m as scalar, so bound(x,m,M) which returns m <= x <= M *OR*
     have m as length 2 vector, bound(x,m, <IGNORED>) returns m[0] <= x <= m[1].
 
     Args:
-        x: scalar
+        x: A scalar to bound
+        m: The lower bound or a length 2 vector for the lower and upper bound
+        M: Optional upper bound
 
     Returns:
-        x: scalar, bound between min (m) and Max (M)
+        The scalar x bound between min (m) and Max (M)
     """
     if M is None:
         M = m[1]
@@ -392,38 +399,33 @@ def bound(x, m, M=None):
 
 
 def rk4(derivs, y0, t):
-    """
-    Integrate 1-D or N-D system of ODEs using 4-th order Runge-Kutta.
-    This is a toy implementation which may be useful if you find
-    yourself stranded on a system w/o scipy.  Otherwise use
-    :func:`scipy.integrate`.
+    """Integrate 1-D or N-D system of ODEs using 4-th order Runge-Kutta.
 
-    Args:
-        derivs: the derivative of the system and has the signature ``dy = derivs(yi)``
-        y0: initial state vector
-        t: sample times
-        args: additional arguments passed to the derivative function
-        kwargs: additional keyword arguments passed to the derivative function
+    This is a toy implementation which may be useful if you find yourself stranded on a system w/o scipy.
+    Otherwise use :func:`scipy.integrate`.
 
-    Example 1 ::
-        ### 2D system
-        def derivs(x):
-            d1 =  x[0] + 2*x[1]
-            d2 =  -3*x[0] + 4*x[1]
-            return (d1, d2)
-        dt = 0.0005
-        t = arange(0.0, 2.0, dt)
-        y0 = (1,2)
-        yout = rk4(derivs6, y0, t)
+    Example for 2d system:
+        >>> def derivs(x):
+        ...    d1 =  x[0] + 2*x[1]
+        ...    d2 =  -3*x[0] + 4*x[1]
+        ...    return d1, d2
+        >>> dt = 0.0005
+        >>> t = np.arange(0.0, 2.0, dt)
+        >>> y0 = (1,2)
+        >>> yout = rk4(derivs, y0, t)
 
     If you have access to scipy, you should probably be using the
     scipy.integrate tools rather than this function.
     This would then require re-adding the time variable to the signature of derivs.
 
-    Returns:
-        yout: Runge-Kutta approximation of the ODE
-    """
+    Args:
+        derivs: the derivative of the system and has the signature ``dy = derivs(yi)``
+        y0: initial state vector
+        t: sample times
 
+    Returns:
+        Runge-Kutta approximation of the ODE
+    """
     try:
         Ny = len(y0)
     except TypeError:

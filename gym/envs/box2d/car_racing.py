@@ -1,3 +1,4 @@
+"""Car racing environment."""
 __credits__ = ["Andrea PIERRÉ"]
 
 import math
@@ -41,15 +42,20 @@ BORDER_MIN_COUNT = 4
 
 
 class FrictionDetector(contactListener):
-    def __init__(self, env, lap_complete_percent):
+    """Friction Detectors using the box2d contact listeners."""
+
+    def __init__(self, env, lap_complete_percent: float):
+        """Friction detector with the lap complete percentage."""
         contactListener.__init__(self)
         self.env = env
         self.lap_complete_percent = lap_complete_percent
 
     def BeginContact(self, contact):
+        """Begins contact."""
         self._contact(contact, True)
 
     def EndContact(self, contact):
+        """Ends contact."""
         self._contact(contact, False)
 
     def _contact(self, contact, begin):
@@ -89,61 +95,61 @@ class FrictionDetector(contactListener):
 
 
 class CarRacing(gym.Env, EzPickle):
-    """
-    ### Description
-    The easiest control task to learn from pixels - a top-down
-    racing environment. The generated track is random every episode.
+    """Car racing environment.
 
-    Some indicators are shown at the bottom of the window along with the
-    state RGB buffer. From left to right: true speed, four ABS sensors,
-    steering wheel position, and gyroscope.
-    To play yourself (it's rather fast for humans), type:
-    ```
-    python gym/envs/box2d/car_racing.py
-    ```
-    Remember: it's a powerful rear-wheel drive car - don't press the accelerator
-    and turn at the same time.
+    Description:
+        The easiest control task to learn from pixels - a top-down
+        racing environment. The generated track is random every episode.
 
-    ### Action Space
-    There are 3 actions: steering (-1 is full left, +1 is full right), gas,
-    and breaking.
+        Some indicators are shown at the bottom of the window along with the
+        state RGB buffer. From left to right: true speed, four ABS sensors,
+        steering wheel position, and gyroscope.
+        To play yourself (it's rather fast for humans), type::
+            ```
+            python gym/envs/box2d/car_racing.py
+            ```
 
-    ### Observation Space
-    State consists of 96x96 pixels.
+        Remember: it's a powerful rear-wheel drive car - don't press the accelerator
+        and turn at the same time.
 
-    ### Rewards
-    The reward is -0.1 every frame and +1000/N for every track tile visited,
-    where N is the total number of tiles visited in the track. For example,
-    if you have finished in 732 frames, your reward is
-    1000 - 0.1*732 = 926.8 points.
+    Action Space:
+        There are 3 actions: steering (-1 is full left, +1 is full right), gas, and breaking.
 
-    ### Starting State
-    The car starts at rest in the center of the road.
+    Observation Space:
+        State consists of 96x96 pixels.
 
-    ### Episode Termination
-    The episode finishes when all of the tiles are visited. The car can also go
-    outside of the playfield - that is, far off the track, in which case it will
-    receive -100 reward and die.
+    Rewards:
+        The reward is -0.1 every frame and +1000/N for every track tile visited,
+        where N is the total number of tiles visited in the track. For example,
+        if you have finished in 732 frames, your reward is 1000 - 0.1*732 = 926.8 points.
 
-    ### Arguments
-    `lap_complete_percent` dictates the percentage of tiles that must be visited by
-    the agent before a lap is considered complete.
+    Starting State:
+        The car starts at rest in the center of the road.
 
-    Passing `domain_randomize=True` enables the domain randomized variant of the environment.
-    In this scenario, the background and track colours are different on every reset.
+    Episode Termination:
+        The episode finishes when all the tiles are visited. The car can also go
+        outside the playfield - that is, far off the track, in which case it will
+        receive -100 reward and die.
 
-    Passing `continuous=False` converts the environment to use discrete action space.
-    The discrete action space has 5 actions: [do nothing, left, right, gas, brake].
+    Arguments
+        `lap_complete_percent` dictates the percentage of tiles that must be visited by
+        the agent before a lap is considered complete.
 
-    ### Version History
-    - v1: Change track completion logic and add domain randomization (0.24.0)
-    - v0: Original version
+        Passing `domain_randomize=True` enables the domain randomized variant of the environment.
+        In this scenario, the background and track colours are different on every reset.
 
-    ### References
-    - Chris Campbell (2014), http://www.iforce2d.net/b2dtut/top-down-car.
+        Passing `continuous=False` converts the environment to use discrete action space.
+        The discrete action space has 5 actions: [do nothing, left, right, gas, brake].
 
-    ### Credits
-    Created by Oleg Klimov
+    Version History:
+        - v1: Change track completion logic and add domain randomization (0.24.0)
+        - v0: Original version
+
+    References:
+        - Chris Campbell (2014), http://www.iforce2d.net/b2dtut/top-down-car.
+
+    Credits:
+        Created by Oleg Klimov
     """
 
     metadata = {
@@ -158,6 +164,14 @@ class CarRacing(gym.Env, EzPickle):
         domain_randomize: bool = False,
         continuous: bool = True,
     ):
+        """Initialises the car racing environment.
+
+        Args:
+            verbose: If to print debug information
+            lap_complete_percent: The lap complete percentage
+            domain_randomize: If to have domain randomization
+            continuous: If to use continuous action space, else discrete action space
+        """
         EzPickle.__init__(self)
         self.continuous = continuous
         self.domain_randomize = domain_randomize
@@ -416,6 +430,7 @@ class CarRacing(gym.Env, EzPickle):
         return_info: bool = False,
         options: Optional[dict] = None,
     ):
+        """Resets the environment."""
         super().reset(seed=seed)
         self._destroy()
         self.reward = 0.0
@@ -443,6 +458,7 @@ class CarRacing(gym.Env, EzPickle):
             return self.step(None)[0], {}
 
     def step(self, action: Union[np.ndarray, int]):
+        """Steps through the environment."""
         if action is not None:
             if self.continuous:
                 self.car.steer(-action[0])
@@ -478,6 +494,7 @@ class CarRacing(gym.Env, EzPickle):
         return self.state, step_reward, done, {}
 
     def render(self, mode: str = "human"):
+        """Renders the environment."""
         try:
             import pygame
         except ImportError:
@@ -665,6 +682,7 @@ class CarRacing(gym.Env, EzPickle):
         )
 
     def close(self):
+        """Closes the screen if opened."""
         if self.screen is not None:
             import pygame
 
@@ -673,7 +691,7 @@ class CarRacing(gym.Env, EzPickle):
             pygame.quit()
 
 
-if __name__ == "__main__":
+def _heuristic_car_racing():
     a = np.array([0.0, 0.0, 0.0])
     import pygame
 
@@ -723,3 +741,7 @@ if __name__ == "__main__":
             if done or restart or isopen is False:
                 break
     env.close()
+
+
+if __name__ == "__main__":
+    _heuristic_car_racing()

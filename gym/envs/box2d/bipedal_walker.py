@@ -1,3 +1,5 @@
+"""Bipedal Walker environment."""
+
 __credits__ = ["Andrea PIERRÉ"]
 
 import math
@@ -75,11 +77,15 @@ LOWER_FD = fixtureDef(
 
 
 class ContactDetector(contactListener):
+    """A Box2D contact detector for the bipedal walker environment."""
+
     def __init__(self, env):
+        """Initialise the contact detector with a Bipedal Walker environment."""
         contactListener.__init__(self)
         self.env = env
 
     def BeginContact(self, contact):
+        """Begins contact with the fixtures."""
         if (
             self.env.hull == contact.fixtureA.body
             or self.env.hull == contact.fixtureB.body
@@ -90,78 +96,77 @@ class ContactDetector(contactListener):
                 leg.ground_contact = True
 
     def EndContact(self, contact):
+        """Ends contact with the fixtures."""
         for leg in [self.env.legs[1], self.env.legs[3]]:
             if leg in [contact.fixtureA.body, contact.fixtureB.body]:
                 leg.ground_contact = False
 
 
 class BipedalWalker(gym.Env, EzPickle):
-    """
-    ### Description
-    This is a simple 4-joint walker robot environment.
-    There are two versions:
-    - Normal, with slightly uneven terrain.
-    - Hardcore, with ladders, stumps, pitfalls.
+    """Bipedal Walker environment.
 
-    To solve the normal version, you need to get 300 points in 1600 time steps.
-    To solve the hardcore version, you need 300 points in 2000 time steps.
+    Description:
+        This is a simple 4-joint walker robot environment.
+        There are two versions:
+        - Normal, with slightly uneven terrain.
+        - Hardcore, with ladders, stumps, pitfalls.
 
-    A heuristic is provided for testing. It's also useful to get demonstrations
-    to learn from. To run the heuristic:
-    ```
-    python gym/envs/box2d/bipedal_walker.py
-    ```
+        To solve the normal version, you need to get 300 points in 1600 time steps.
+        To solve the hardcore version, you need 300 points in 2000 time steps.
 
-    ### Action Space
-    Actions are motor speed values in the [-1, 1] range for each of the
-    4 joints at both hips and knees.
+        A heuristic is provided for testing. It's also useful to get demonstrations
+        to learn from. To run the heuristic::
+            ```
+            python gym/envs/box2d/bipedal_walker.py
+            ```
 
-    ### Observation Space
-    State consists of hull angle speed, angular velocity, horizontal speed,
-    vertical speed, position of joints and joints angular speed, legs contact
-    with ground, and 10 lidar rangefinder measurements. There are no coordinates
-    in the state vector.
+    Action Space:
+        Actions are motor speed values in the [-1, 1] range for each of the
+        4 joints at both hips and knees.
 
-    ### Rewards
-    Reward is given for moving forward, totaling 300+ points up to the far end.
-    If the robot falls, it gets -100. Applying motor torque costs a small
-    amount of points. A more optimal agent will get a better score.
+    Observation Space:
+        State consists of hull angle speed, angular velocity, horizontal speed,
+        vertical speed, position of joints and joints angular speed, legs contact
+        with ground, and 10 lidar rangefinder measurements. There are no coordinates
+        in the state vector.
 
-    ### Starting State
-    The walker starts standing at the left end of the terrain with the hull
-    horizontal, and both legs in the same position with a slight knee angle.
+    Rewards:
+        Reward is given for moving forward, totaling 300+ points up to the far end.
+        If the robot falls, it gets -100. Applying motor torque costs a small
+        amount of points. A more optimal agent will get a better score.
 
-    ### Episode Termination
-    The episode will terminate if the hull gets in contact with the ground or
-    if the walker exceeds the right end of the terrain length.
+    Starting State:
+        The walker starts standing at the left end of the terrain with the hull
+        horizontal, and both legs in the same position with a slight knee angle.
 
-    ### Arguments
-    To use to the _hardcore_ environment, you need to specify the
-    `hardcore=True` argument like below:
-    ```python
-    import gym
-    env = gym.make("BipedalWalker-v3", hardcore=True)
-    ```
+    Episode Termination:
+        The episode will terminate if the hull gets in contact with the ground or
+        if the walker exceeds the right end of the terrain length.
 
-    ### Version History
-    - v3: returns closest lidar trace instead of furthest;
-        faster video recording
-    - v2: Count energy spent
-    - v1: Legs now report contact with ground; motors have higher torque and
-        speed; ground has higher friction; lidar rendered less nervously.
-    - v0: Initial version
+    Arguments:
+        To use to the _hardcore_ environment, you need to specify the
+        `hardcore=True` argument like below::
+            ```python
+            import gym
+            env = gym.make("BipedalWalker-v3", hardcore=True)
+            ```
 
+    Version History:
+        - v3: returns the closest lidar trace instead of furthest;
+            faster video recording
+        - v2: Count energy spent
+        - v1: Legs now report contact with ground; motors have higher torque and
+            speed; ground has higher friction; lidar rendered less nervously.
+        - v0: Initial version
 
-    <!-- ### References -->
-
-    ### Credits
-    Created by Oleg Klimov
-
+    Credits:
+        Created by Oleg Klimov
     """
 
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": FPS}
 
     def __init__(self, hardcore: bool = False):
+        """Initialises the environment."""
         EzPickle.__init__(self)
         self.screen = None
         self.clock = None
@@ -418,6 +423,7 @@ class BipedalWalker(gym.Env, EzPickle):
         return_info: bool = False,
         options: Optional[dict] = None,
     ):
+        """Resets the environment."""
         super().reset(seed=seed)
         self._destroy()
         self.world.contactListener_bug_workaround = ContactDetector(self)
@@ -506,6 +512,7 @@ class BipedalWalker(gym.Env, EzPickle):
             return self.step(np.array([0, 0, 0, 0]))[0], {}
 
     def step(self, action: np.ndarray):
+        """Steps through the environment."""
         # self.hull.ApplyForceToCenter((0, 20), True) -- Uncomment this to receive a bit of stability help
         control_speed = False  # Should be easier as well
         if control_speed:
@@ -592,6 +599,7 @@ class BipedalWalker(gym.Env, EzPickle):
         return np.array(state, dtype=np.float32), reward, done, {}
 
     def render(self, mode: str = "human"):
+        """Renders the environment."""
         try:
             import pygame
             from pygame import gfxdraw
@@ -731,6 +739,7 @@ class BipedalWalker(gym.Env, EzPickle):
             return self.isopen
 
     def close(self):
+        """Closes the screen if opened."""
         if self.screen is not None:
             import pygame
 
@@ -740,7 +749,10 @@ class BipedalWalker(gym.Env, EzPickle):
 
 
 class BipedalWalkerHardcore:
+    """Deprecated bipedal walker hardcore class, use 'gym.make("BipedalWalker-v3", hardcore=True)'."""
+
     def __init__(self):
+        """Deprecated constructor."""
         raise error.Error(
             "Error initializing BipedalWalkerHardcore Environment.\n"
             "Currently, we do not support initializing this mode of environment by calling the class directly.\n"
@@ -749,8 +761,8 @@ class BipedalWalkerHardcore:
         )
 
 
-if __name__ == "__main__":
-    # Heurisic: suboptimal, have no notion of balance.
+def _bipedal_walker_heuristic():
+    # Heuristic: suboptimal, have no notion of balance.
     env = BipedalWalker()
     env.reset()
     steps = 0
@@ -774,8 +786,6 @@ if __name__ == "__main__":
             print("leg1 " + str([f"{x:+0.2f}" for x in s[9:14]]))
         steps += 1
 
-        contact0 = s[8]
-        contact1 = s[13]
         moving_s_base = 4 + 5 * moving_leg
         supporting_s_base = 4 + 5 * supporting_leg
 
@@ -832,3 +842,7 @@ if __name__ == "__main__":
         env.render()
         if done:
             break
+
+
+if __name__ == "__main__":
+    _bipedal_walker_heuristic()

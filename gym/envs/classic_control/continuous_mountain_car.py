@@ -1,16 +1,15 @@
-"""
+"""Continuous mountain car environment.
+
 @author: Olivier Sigaud
 
 A merge between two sources:
-
 * Adaptation of the MountainCar Environment from the "FAReinforcement" library
-of Jose Antonio Martin H. (version 1.0), adapted by  'Tom Schaul, tom@idsia.ch'
-and then modified by Arnaud de Broissia
+  of Jose Antonio Martin H. (version 1.0), adapted by  'Tom Schaul, tom@idsia.ch'
+  and then modified by Arnaud de Broissia
 
-* the gym MountainCar environment
-itself from
-http://incompleteideas.net/sutton/MountainCar/MountainCar1.cp
-permalink: https://perma.cc/6Z2N-PFWC
+* The gym MountainCar environment
+  itself from http://incompleteideas.net/sutton/MountainCar/MountainCar1.cp
+  (permalink: https://perma.cc/6Z2N-PFWC)
 """
 
 import math
@@ -24,78 +23,80 @@ from gym.error import DependencyNotInstalled
 
 
 class Continuous_MountainCarEnv(gym.Env):
-    """
-    ### Description
+    """Continuous Mountain Car environment.
 
-    The Mountain Car MDP is a deterministic MDP that consists of a car placed stochastically
-    at the bottom of a sinusoidal valley, with the only possible actions being the accelerations
-    that can be applied to the car in either direction. The goal of the MDP is to strategically
-    accelerate the car to reach the goal state on top of the right hill. There are two versions
-    of the mountain car domain in gym: one with discrete actions and one with continuous.
-    This version is the one with continuous actions.
+    Description:
+        The Mountain Car MDP is a deterministic MDP that consists of a car placed stochastically
+        at the bottom of a sinusoidal valley, with the only possible actions being the accelerations
+        that can be applied to the car in either direction. The goal of the MDP is to strategically
+        accelerate the car to reach the goal state on top of the right hill. There are two versions
+        of the mountain car domain in gym: one with discrete actions and one with continuous.
+        This version is the one with continuous actions.
 
-    This MDP first appeared in [Andrew Moore's PhD Thesis (1990)](https://www.cl.cam.ac.uk/techreports/UCAM-CL-TR-209.pdf)
+        This MDP first appeared in [Andrew Moore's PhD Thesis (1990)](https://www.cl.cam.ac.uk/techreports/UCAM-CL-TR-209.pdf)
+        ```
+        @TECHREPORT{Moore90efficientmemory-based,
+            author = {Andrew William Moore},
+            title = {Efficient Memory-based Learning for Robot Control},
+            institution = {University of Cambridge},
+            year = {1990}
+        }
+        ```
 
-    ```
-    @TECHREPORT{Moore90efficientmemory-based,
-        author = {Andrew William Moore},
-        title = {Efficient Memory-based Learning for Robot Control},
-        institution = {University of Cambridge},
-        year = {1990}
-    }
-    ```
+    Observation Space:
+        The observation is a `ndarray` with shape `(2,)` where the elements correspond to the following:
 
-    ### Observation Space
+        | Num | Observation                          | Min  | Max | Unit          |
+        |-----|--------------------------------------|------|-----|--------------|
+        | 0   | position of the car along the x-axis | -Inf | Inf | position (m) |
+        | 1   | velocity of the car                  | -Inf | Inf | position (m) |
 
-    The observation is a `ndarray` with shape `(2,)` where the elements correspond to the following:
+    Action Space:
+        The action is a `ndarray` with shape `(1,)`, representing the directional
+        force applied on the car. The action is clipped in the range `[-1,1]`
+        and multiplied by a power of 0.0015.
 
-    | Num | Observation                                                 | Min                | Max    | Unit |
-    |-----|-------------------------------------------------------------|--------------------|--------|------|
-    | 0   | position of the car along the x-axis                        | -Inf               | Inf    | position (m) |
-    | 1   | velocity of the car                                         | -Inf               | Inf  | position (m) |
+    Transition Dynamics:
+        Given an action, the mountain car follows the following transition dynamics:
+        - :math:`velocity_{t+1} = velocity_{t+1} + force + self.power - 0.0025 * cos(3 * position_t)`
+        - :math:`position_{t+1} = position_{t} + velocity_{t+1}`
 
-    ### Action Space
+        where force is the action clipped to the range `[-1,1]` and power is a constant 0.0015.
+        The collisions at either end are inelastic with the velocity set to 0 upon collision with the wall.
+        The position is clipped to the range [-1.2, 0.6] and velocity is clipped to the range [-0.07, 0.07].
 
-    The action is a `ndarray` with shape `(1,)`, representing the directional force applied on the car. The action is clipped in the range `[-1,1]` and multiplied by a power of 0.0015.
+    Reward:
+        A negative reward of :math:`-0.1 * action^2` is received at each timestep to penalise
+        for taking actions of large magnitude. If the mountain car reaches the goal then a
+        positive reward of +100 is added to the negative reward for that timestep.
 
-    ### Transition Dynamics:
+    Starting State:
+        The position of the car is assigned a uniform random value in `[-0.6 , -0.4]`.
+        The starting velocity of the car is always assigned to 0.
 
-    Given an action, the mountain car follows the following transition dynamics:
+    Episode Termination:
+        The episode terminates if either of the following happens:
+        1. The position of the car is greater than or equal to 0.45
+           (the goal position on top of the right hill)
+        2. The length of the episode is 999.
 
-    *velocity<sub>t+1</sub> = velocity<sub>t+1</sub> + force * self.power - 0.0025 * cos(3 * position<sub>t</sub>)*
+    Arguments:
+        ```
+        gym.make('MountainCarContinuous-v0')
+        ```
 
-    *position<sub>t+1</sub> = position<sub>t</sub> + velocity<sub>t+1</sub>*
-
-    where force is the action clipped to the range `[-1,1]` and power is a constant 0.0015. The collisions at either end are inelastic with the velocity set to 0 upon collision with the wall. The position is clipped to the range [-1.2, 0.6] and velocity is clipped to the range [-0.07, 0.07].
-
-    ### Reward
-
-    A negative reward of *-0.1 * action<sup>2</sup>* is received at each timestep to penalise for taking actions of large magnitude. If the mountain car reaches the goal then a positive reward of +100 is added to the negative reward for that timestep.
-
-    ### Starting State
-
-    The position of the car is assigned a uniform random value in `[-0.6 , -0.4]`. The starting velocity of the car is always assigned to 0.
-
-    ### Episode Termination
-
-    The episode terminates if either of the following happens:
-    1. The position of the car is greater than or equal to 0.45 (the goal position on top of the right hill)
-    2. The length of the episode is 999.
-
-    ### Arguments
-
-    ```
-    gym.make('MountainCarContinuous-v0')
-    ```
-
-    ### Version History
-
-    * v0: Initial versions release (1.0.0)
+    Version History:
+        * v0: Initial versions release (1.0.0)
     """
 
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 30}
 
-    def __init__(self, goal_velocity=0):
+    def __init__(self, goal_velocity: float = 0.0):
+        """Initialises the environment.
+
+        Args:
+            goal_velocity: The target goal velocity
+        """
         self.min_action = -1.0
         self.max_action = 1.0
         self.min_position = -1.2
@@ -126,7 +127,7 @@ class Continuous_MountainCarEnv(gym.Env):
         )
 
     def step(self, action: np.ndarray):
-
+        """Steps through the environment."""
         position = self.state[0]
         velocity = self.state[1]
         force = min(max(action[0], self.min_action), self.max_action)
@@ -162,6 +163,7 @@ class Continuous_MountainCarEnv(gym.Env):
         return_info: bool = False,
         options: Optional[dict] = None
     ):
+        """Resets the environment."""
         super().reset(seed=seed)
         self.state = np.array([self.np_random.uniform(low=-0.6, high=-0.4), 0])
         if not return_info:
@@ -173,6 +175,7 @@ class Continuous_MountainCarEnv(gym.Env):
         return np.sin(3 * xs) * 0.45 + 0.55
 
     def render(self, mode="human"):
+        """Renders the environment."""
         try:
             import pygame
             from pygame import gfxdraw
@@ -267,6 +270,7 @@ class Continuous_MountainCarEnv(gym.Env):
             return self.isopen
 
     def close(self):
+        """Closes the environment."""
         if self.screen is not None:
             import pygame
 

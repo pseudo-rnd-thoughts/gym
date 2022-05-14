@@ -1,3 +1,4 @@
+"""Allows registration of environments in gym."""
 from __future__ import annotations
 
 import contextlib
@@ -10,12 +11,11 @@ import sys
 import warnings
 from dataclasses import dataclass, field
 from typing import (
-    Any,
     Callable,
+    Literal,
     Optional,
     Sequence,
     SupportsFloat,
-    Tuple,
     Type,
     Union,
     overload,
@@ -31,15 +31,6 @@ if sys.version_info < (3, 10):
 else:
     import importlib.metadata as metadata
 
-if sys.version_info >= (3, 8):
-    from typing import Literal
-else:
-
-    class Literal(str):
-        def __class_getitem__(cls, item):
-            return Any
-
-
 from gym import Env, error, logger
 
 ENV_ID_RE: re.Pattern = re.compile(
@@ -48,20 +39,24 @@ ENV_ID_RE: re.Pattern = re.compile(
 
 
 def load(name: str) -> Type:
+    """Loads an entry point of an environment."""
     mod_name, attr_name = name.split(":")
     mod = importlib.import_module(mod_name)
     fn = getattr(mod, attr_name)
     return fn
 
 
-def parse_env_id(id: str) -> Tuple[Optional[str], str, Optional[int]]:
+def parse_env_id(id: str) -> tuple[Optional[str], str, Optional[int]]:
     """Parse environment ID string format.
 
-    This format is true today, but it's *not* an official spec.
-    [namespace/](env-name)-v(version)    env-name is group 1, version is group 2
+    Expected format is "[namespace/](env-name)-v(version)"
+    where env-name is string and version is a positive integer
 
-    2016-10-31: We're experimentally expanding the environment ID format
-    to include an optional namespace.
+    Args:
+        id: The environment id string
+
+    Returns:
+        Tuple of optional namespace, environment name and optional version
     """
     match = ENV_ID_RE.fullmatch(id)
     if not match:
@@ -76,10 +71,19 @@ def parse_env_id(id: str) -> Tuple[Optional[str], str, Optional[int]]:
     return namespace, name, version
 
 
-def get_env_id(ns: Optional[str], name: str, version: Optional[int]):
+def get_env_id(ns: Optional[str], name: str, version: Optional[int]) -> str:
     """Get the full env ID given a name and (optional) version and namespace.
-    Inverse of parse_env_id."""
 
+    Inverse of parse_env_id.
+
+    Args:
+        ns: The namespace
+        name: The environment name
+        version: The environment id
+
+    Returns:
+        The full environment ID
+    """
     full_name = name
     if version is not None:
         full_name += f"-v{version}"
@@ -90,6 +94,8 @@ def get_env_id(ns: Optional[str], name: str, version: Optional[int]):
 
 @dataclass
 class EnvSpec:
+    """Environment Spec dataclass setting id, entry point and more parameters."""
+
     id: str
     entry_point: Optional[Union[Callable, str]] = field(default=None)
     reward_threshold: Optional[float] = field(default=None)
@@ -104,10 +110,12 @@ class EnvSpec:
     version: Optional[int] = field(init=False)
 
     def __post_init__(self):
+        """Post init to parse the environment id with namespace, environment name and version."""
         # Initialize namespace, name, version
         self.namespace, self.name, self.version = parse_env_id(self.id)
 
     def make(self, **kwargs) -> Env:
+        """Creates an environment with `kwargs` calling `gym.make`."""
         # For compatibility purposes
         return make(self, **kwargs)
 
@@ -169,8 +177,16 @@ def _check_name_exists(ns: Optional[str], name: str):
 
 
 def _check_version_exists(ns: Optional[str], name: str, version: Optional[int]):
-    """Check if an env version exists in a namespace. If it doesn't, print a helpful error message.
-    This is a complete test whether an environment identifier is valid, and will provide the best available hints."""
+    """Validates if an env version exists in a namespace.
+
+    If it doesn't, print a helpful error message.
+    This is a complete test whether an environment identifier is valid, and will provide the best available hints.
+
+    Args:
+        ns: The namespace
+        name: The environment name
+        version: The environment version
+    """
     if get_env_id(ns, name, version) in registry:
         return
 
@@ -213,6 +229,15 @@ def _check_version_exists(ns: Optional[str], name: str, version: Optional[int]):
 
 
 def find_highest_version(ns: Optional[str], name: str) -> Optional[int]:
+    """Finds the highest version of an environment.
+
+    Args:
+        ns: The namespace of the environment
+        name: The environment name
+
+    Returns:
+        The maximum version number of the environment
+    """
     version: list[int] = [
         spec_.version
         for spec_ in registry.values()
@@ -221,7 +246,8 @@ def find_highest_version(ns: Optional[str], name: str) -> Optional[int]:
     return max(version, default=None)
 
 
-def load_env_plugins(entry_point: str = "gym.envs") -> None:
+def load_env_plugins(entry_point: str = "gym.envs"):
+    """Loads the environment plugins with ``entry_point``."""
     # Load third-party environments
     for plugin in metadata.entry_points(group=entry_point):
         # Python 3.8 doesn't support plugin.module, plugin.attr
@@ -399,6 +425,7 @@ def _check_spec_register(spec: EnvSpec):
 
 @contextlib.contextmanager
 def namespace(ns: str):
+    """Changes the namespace to the ``ns``."""
     global current_namespace
     old_namespace = current_namespace
     current_namespace = ns
@@ -407,9 +434,9 @@ def namespace(ns: str):
 
 
 def register(id: str, **kwargs):
-    """
-    Register an environment with gym. The `id` parameter corresponds to the name of the environment,
-    with the syntax as follows:
+    """Register an environment with gym.
+
+    The `id` parameter corresponds to the name of the environment, with the syntax as follows:
     `(namespace)/(env_name)-v(version)`
     where `namespace` is optional.
 
@@ -446,14 +473,14 @@ def make(
     autoreset: bool = False,
     **kwargs,
 ) -> Env:
-    """
-    Create an environment according to the given ID.
+    """Create an environment according to the given ID.
 
     Args:
         id: Name of the environment.
         max_episode_steps: Maximum length of an episode (TimeLimit wrapper).
         autoreset: Whether to automatically reset the environment after each episode (AutoResetWrapper).
         kwargs: Additional arguments to pass to the environment constructor.
+
     Returns:
         An instance of the environment.
     """
@@ -520,9 +547,7 @@ def make(
 
 
 def spec(env_id: str) -> EnvSpec:
-    """
-    Retrieve the spec for the given environment from the global registry.
-    """
+    """Retrieve the spec for the given environment from the global registry."""
     spec_ = registry.get(env_id)
     if spec_ is None:
         ns, name, version = parse_env_id(env_id)

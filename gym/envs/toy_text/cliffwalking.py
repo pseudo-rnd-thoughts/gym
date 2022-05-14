@@ -1,3 +1,4 @@
+"""Cliff walking environments."""
 import sys
 from contextlib import closing
 from io import StringIO
@@ -15,52 +16,53 @@ LEFT = 3
 
 
 class CliffWalkingEnv(Env):
-    """
-    This is a simple implementation of the Gridworld Cliff
-    reinforcement learning task.
+    """Implementation of the Gridworld Cliff reinforcement learning task.
 
-    Adapted from Example 6.6 (page 106) from [Reinforcement Learning: An Introduction
-    by Sutton and Barto](http://incompleteideas.net/book/bookdraft2018jan1.pdf).
+    Adapted from Example 6.6 (page 106) from
+    [Reinforcement Learning: An Introduction by Sutton and Barto](http://incompleteideas.net/book/bookdraft2018jan1.pdf).
 
     With inspiration from:
     https://github.com/dennybritz/reinforcement-learning/blob/master/lib/envs/cliff_walking.py
 
-    ### Description
-    The board is a 4x12 matrix, with (using NumPy matrix indexing):
-    - [3, 0] as the start at bottom-left
-    - [3, 11] as the goal at bottom-right
-    - [3, 1..10] as the cliff at bottom-center
+    Description:
+        The board is a 4x12 matrix, with (using NumPy matrix indexing):
+        - [3, 0] as the start at bottom-left
+        - [3, 11] as the goal at bottom-right
+        - [3, 1..10] as the cliff at bottom-center
 
-    If the agent steps on the cliff it returns to the start.
-    An episode terminates when the agent reaches the goal.
+        If the agent steps on the cliff it returns to the start.
+        An episode terminates when the agent reaches the goal.
 
-    ### Actions
-    There are 4 discrete deterministic actions:
-    - 0: move up
-    - 1: move right
-    - 2: move down
-    - 3: move left
+    Actions:
+        There are 4 discrete deterministic actions:
+        - 0: move up
+        - 1: move right
+        - 2: move down
+        - 3: move left
 
-    ### Observations
-    There are 3x12 + 1 possible states. In fact, the agent cannot be at the cliff, nor at the goal (as this results the end of episode). They remain all the positions of the first 3 rows plus the bottom-left cell.
-    The observation is simply the current position encoded as [flattened index](https://numpy.org/doc/stable/reference/generated/numpy.unravel_index.html).
+    Observations:
+        There are 3x12 + 1 possible states. In fact, the agent cannot be at the cliff,
+        nor at the goal (as this results the end of episode).
+        They remain all the positions of the first 3 rows plus the bottom-left cell.
+        The observation is simply the current position encoded as
+        [flattened index](https://numpy.org/doc/stable/reference/generated/numpy.unravel_index.html).
 
-    ### Reward
-    Each time step incurs -1 reward, and stepping into the cliff incurs -100 reward.
+    Reward:
+        Each time step incurs -1 reward, and stepping into the cliff incurs -100 reward.
 
-    ### Arguments
+    Arguments:
+        ```
+        gym.make('CliffWalking-v0')
+        ```
 
-    ```
-    gym.make('CliffWalking-v0')
-    ```
-
-    ### Version History
-    - v0: Initial version release
+    Version History:
+        - v0: Initial version release
     """
 
     metadata = {"render_modes": ["human", "ansi"], "render_fps": 4}
 
     def __init__(self):
+        """Initialises the cliff walking environment."""
         self.shape = (4, 12)
         self.start_state_index = np.ravel_multi_index((3, 0), self.shape)
 
@@ -89,24 +91,24 @@ class CliffWalkingEnv(Env):
         self.observation_space = spaces.Discrete(self.nS)
         self.action_space = spaces.Discrete(self.nA)
 
-    def _limit_coordinates(self, coord):
-        """
-        Prevent the agent from falling out of the grid world
-        :param coord:
-        :return:
-        """
+    def _limit_coordinates(self, coord: np.ndarray) -> np.ndarray:
         coord[0] = min(coord[0], self.shape[0] - 1)
         coord[0] = max(coord[0], 0)
         coord[1] = min(coord[1], self.shape[1] - 1)
         coord[1] = max(coord[1], 0)
         return coord
 
-    def _calculate_transition_prob(self, current, delta):
-        """
-        Determine the outcome for an action. Transition Prob is always 1.0.
-        :param current: Current position on the grid as (row, col)
-        :param delta: Change in position for transition
-        :return: (1.0, new_state, reward, done)
+    def _calculate_transition_prob(
+        self, current, delta
+    ) -> list[tuple[float, np.ndarray, float, bool]]:
+        """Determine the outcome for an action. Transition Prob is always 1.0.
+
+        Args:
+            current: Current position on the grid as (row, col)
+            delta: Change in position for transition
+
+        Returns:
+            (1.0, new_state, reward, done)
         """
         new_position = np.array(current) + np.array(delta)
         new_position = self._limit_coordinates(new_position).astype(int)
@@ -119,6 +121,7 @@ class CliffWalkingEnv(Env):
         return [(1.0, new_state, -1, is_done)]
 
     def step(self, a):
+        """Steps through the environment."""
         transitions = self.P[self.s][a]
         i = categorical_sample([t[0] for t in transitions], self.np_random)
         p, s, r, d = transitions[i]
@@ -133,6 +136,7 @@ class CliffWalkingEnv(Env):
         return_info: bool = False,
         options: Optional[dict] = None
     ):
+        """Resets the environment."""
         super().reset(seed=seed)
         self.s = categorical_sample(self.initial_state_distrib, self.np_random)
         self.lastaction = None
@@ -142,6 +146,7 @@ class CliffWalkingEnv(Env):
             return int(self.s), {"prob": 1}
 
     def render(self, mode="human"):
+        """Renders the environment."""
         outfile = StringIO() if mode == "ansi" else sys.stdout
 
         for s in range(self.nS):

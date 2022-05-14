@@ -1,4 +1,7 @@
-from typing import Dict, Optional, Tuple
+"""Relocates internal environment map."""
+from __future__ import annotations
+
+from typing import Optional
 
 # The following is a map of environments which have been relocated
 # to a different namespace. This map is important when reporting
@@ -6,7 +9,7 @@ from typing import Dict, Optional, Tuple
 # This map should be removed eventually once users
 # are sufficiently aware of the environment relocations.
 # The value of the mapping is (namespace, package,).
-internal_env_relocation_map: Dict[str, Tuple[Optional[str], str]] = {
+internal_env_relocation_map: dict[str, tuple[Optional[str], str]] = {
     "Adventure": ("ALE", "ale-py"),
     "AdventureDeterministic": (None, "ale-py"),
     "AdventureNoFrameskip": (None, "ale-py"),

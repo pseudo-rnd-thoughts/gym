@@ -1,3 +1,4 @@
+"""Taxi environment by Dietterich, 1999."""
 from contextlib import closing
 from io import StringIO
 from os import path
@@ -22,91 +23,90 @@ WINDOW_SIZE = (550, 350)
 
 
 class TaxiEnv(Env):
-    """
+    """Taxi environment.
 
-    The Taxi Problem
-    from "Hierarchical Reinforcement Learning with the MAXQ Value Function Decomposition"
+    The Taxi Problem from "Hierarchical Reinforcement Learning with the MAXQ Value Function Decomposition"
     by Tom Dietterich
 
-    ### Description
-    There are four designated locations in the grid world indicated by R(ed),
-    G(reen), Y(ellow), and B(lue). When the episode starts, the taxi starts off
-    at a random square and the passenger is at a random location. The taxi
-    drives to the passenger's location, picks up the passenger, drives to the
-    passenger's destination (another one of the four specified locations), and
-    then drops off the passenger. Once the passenger is dropped off, the episode ends.
+    Description:
+        There are four designated locations in the grid world indicated by R(ed),
+        G(reen), Y(ellow), and B(lue). When the episode starts, the taxi starts off
+        at a random square and the passenger is at a random location. The taxi
+        drives to the passenger's location, picks up the passenger, drives to the
+        passenger's destination (another one of the four specified locations), and
+        then drops off the passenger. Once the passenger is dropped off, the episode ends.
 
-    Map:
+        Map:
+            +---------+
+            |R: | : :G|
+            | : | : : |
+            | : : : : |
+            | | : | : |
+            |Y| : |B: |
+            +---------+
 
-        +---------+
-        |R: | : :G|
-        | : | : : |
-        | : : : : |
-        | | : | : |
-        |Y| : |B: |
-        +---------+
+    Actions:
+        There are 6 discrete deterministic actions:
+        - 0: move south
+        - 1: move north
+        - 2: move east
+        - 3: move west
+        - 4: pickup passenger
+        - 5: drop off passenger
 
-    ### Actions
-    There are 6 discrete deterministic actions:
-    - 0: move south
-    - 1: move north
-    - 2: move east
-    - 3: move west
-    - 4: pickup passenger
-    - 5: drop off passenger
+    Observations:
+        There are 500 discrete states since there are 25 taxi positions, 5 possible
+        locations of the passenger (including the case when the passenger is in the
+        taxi), and 4 destination locations.
 
-    ### Observations
-    There are 500 discrete states since there are 25 taxi positions, 5 possible
-    locations of the passenger (including the case when the passenger is in the
-    taxi), and 4 destination locations.
+        Note that there are 400 states that can actually be reached during an
+        episode. The missing states correspond to situations in which the passenger
+        is at the same location as their destination, as this typically signals the
+        end of an episode. Four additional states can be observed right after a
+        successful episodes, when both the passenger and the taxi are at the destination.
+        This gives a total of 404 reachable discrete states.
 
-    Note that there are 400 states that can actually be reached during an
-    episode. The missing states correspond to situations in which the passenger
-    is at the same location as their destination, as this typically signals the
-    end of an episode. Four additional states can be observed right after a
-    successful episodes, when both the passenger and the taxi are at the destination.
-    This gives a total of 404 reachable discrete states.
+        Each state space is represented by the tuple:
+        (taxi_row, taxi_col, passenger_location, destination)
 
-    Each state space is represented by the tuple:
-    (taxi_row, taxi_col, passenger_location, destination)
+        An observation is an integer that encodes the corresponding state.
+        The state tuple can then be decoded with the "decode" method.
 
-    An observation is an integer that encodes the corresponding state.
-    The state tuple can then be decoded with the "decode" method.
+        Passenger locations:
+        - 0: R(ed)
+        - 1: G(reen)
+        - 2: Y(ellow)
+        - 3: B(lue)
+        - 4: in taxi
 
-    Passenger locations:
-    - 0: R(ed)
-    - 1: G(reen)
-    - 2: Y(ellow)
-    - 3: B(lue)
-    - 4: in taxi
+        Destinations:
+        - 0: R(ed)
+        - 1: G(reen)
+        - 2: Y(ellow)
+        - 3: B(lue)
 
-    Destinations:
-    - 0: R(ed)
-    - 1: G(reen)
-    - 2: Y(ellow)
-    - 3: B(lue)
+    Rewards:
+        - -1 per step unless other reward is triggered.
+        - +20 delivering passenger.
+        - -10  executing "pickup" and "drop-off" actions illegally.
 
-    ### Rewards
-    - -1 per step unless other reward is triggered.
-    - +20 delivering passenger.
-    - -10  executing "pickup" and "drop-off" actions illegally.
+    Arguments:
+        ```
+        gym.make('Taxi-v3')
+        ```
 
-    ### Arguments
-
-    ```
-    gym.make('Taxi-v3')
-    ```
-
-    ### Version History
-    * v3: Map Correction + Cleaner Domain Description
-    * v2: Disallow Taxi start location = goal location, Update Taxi observations in the rollout, Update Taxi reward threshold.
-    * v1: Remove (3,2) from locs, add passidx<4 check
-    * v0: Initial versions release
+    Version History:
+        * v3: Map Correction + Cleaner Domain Description
+        * v2: Disallow Taxi start location = goal location,
+          Update Taxi observations in the rollout, Update Taxi reward threshold.
+        * v1: Remove (3,2) from locs, add ``passidx<4` check
+        * v0: Initial versions release
     """
 
     metadata = {"render_modes": ["human", "ansi", "rgb_array"], "render_fps": 4}
 
     def __init__(self):
+        """Initialises the taxi environment."""
         self.desc = np.asarray(MAP, dtype="c")
 
         self.locs = locs = [(0, 0), (0, 4), (4, 0), (4, 3)]
@@ -184,7 +184,8 @@ class TaxiEnv(Env):
         self.median_vert = None
         self.background_img = None
 
-    def encode(self, taxi_row, taxi_col, pass_loc, dest_idx):
+    def encode(self, taxi_row: int, taxi_col: int, pass_loc: int, dest_idx: int) -> int:
+        """Encodes the taxi row, col, passenger location and destination index into a single integer."""
         # (5) 5, 5, 4
         i = taxi_row
         i *= 5
@@ -195,7 +196,8 @@ class TaxiEnv(Env):
         i += dest_idx
         return i
 
-    def decode(self, i):
+    def decode(self, i: int):
+        """Decodes the current state ``i`` to a list of reversed integers."""
         out = []
         out.append(i % 4)
         i = i // 4
@@ -208,6 +210,7 @@ class TaxiEnv(Env):
         return reversed(out)
 
     def step(self, a):
+        """Steps through the environment."""
         transitions = self.P[self.s][a]
         i = categorical_sample([t[0] for t in transitions], self.np_random)
         p, s, r, d = transitions[i]
@@ -222,6 +225,7 @@ class TaxiEnv(Env):
         return_info: bool = False,
         options: Optional[dict] = None,
     ):
+        """Resets the environment."""
         super().reset(seed=seed)
         self.s = categorical_sample(self.initial_state_distrib, self.np_random)
         self.lastaction = None
@@ -231,7 +235,8 @@ class TaxiEnv(Env):
         else:
             return int(self.s), {"prob": 1}
 
-    def render(self, mode="human"):
+    def render(self, mode: str = "human"):
+        """Renders the environment."""
         if mode == "ansi":
             return self._render_text()
         else:
@@ -363,10 +368,18 @@ class TaxiEnv(Env):
                 np.array(pygame.surfarray.pixels3d(self.window)), axes=(1, 0, 2)
             )
 
-    def get_surf_loc(self, map_loc):
-        return (map_loc[1] * 2 + 1) * self.cell_size[0], (
-            map_loc[0] + 1
-        ) * self.cell_size[1]
+    def get_surf_loc(self, map_loc: tuple[float, float]) -> tuple[float, float]:
+        """Gets the surface location for rendering the environment.
+
+        Args:
+            map_loc: The map location
+
+        Returns:
+            The surface location
+        """
+        x = (map_loc[1] * 2 + 1) * self.cell_size[0]
+        y = (map_loc[0] + 1) * self.cell_size[1]
+        return x, y
 
     def _render_text(self):
         desc = self.desc.copy().tolist()
@@ -405,6 +418,7 @@ class TaxiEnv(Env):
             return outfile.getvalue()
 
     def close(self):
+        """Closes the window if it exists."""
         if self.window is not None:
             import pygame
 

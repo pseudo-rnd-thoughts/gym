@@ -1,3 +1,4 @@
+"""Lunar lander environment."""
 __credits__ = ["Andrea PIERRÉ"]
 
 import math
@@ -45,11 +46,15 @@ VIEWPORT_H = 400
 
 
 class ContactDetector(contactListener):
+    """Contact detector using the box2d contact listener."""
+
     def __init__(self, env):
+        """Initialises a contact detector."""
         contactListener.__init__(self)
         self.env = env
 
     def BeginContact(self, contact):
+        """Begins contact with the fixtures."""
         if (
             self.env.lander == contact.fixtureA.body
             or self.env.lander == contact.fixtureB.body
@@ -60,112 +65,111 @@ class ContactDetector(contactListener):
                 self.env.legs[i].ground_contact = True
 
     def EndContact(self, contact):
+        """Ends contact with the fixtures."""
         for i in range(2):
             if self.env.legs[i] in [contact.fixtureA.body, contact.fixtureB.body]:
                 self.env.legs[i].ground_contact = False
 
 
 class LunarLander(gym.Env, EzPickle):
-    """
-    ### Description
-    This environment is a classic rocket trajectory optimization problem.
-    According to Pontryagin's maximum principle, it is optimal to fire the
-    engine at full throttle or turn it off. This is the reason why this
-    environment has discrete actions: engine on or off.
+    """Lunar Lander environment.
 
-    There are two environment versions: discrete or continuous.
-    The landing pad is always at coordinates (0,0). The coordinates are the
-    first two numbers in the state vector.
-    Landing outside of the landing pad is possible. Fuel is infinite, so an agent
-    can learn to fly and then land on its first attempt.
+    Description:
+        This environment is a classic rocket trajectory optimization problem.
+        According to Pontryagin's maximum principle, it is optimal to fire the
+        engine at full throttle or turn it off. This is the reason why this
+        environment has discrete actions: engine on or off.
 
-    To see a heuristic landing, run:
-    ```
-    python gym/envs/box2d/lunar_lander.py
-    ```
-    <!-- To play yourself, run: -->
-    <!-- python examples/agents/keyboard_agent.py LunarLander-v2 -->
+        There are two environment versions: discrete or continuous.
+        The landing pad is always at coordinates (0,0). The coordinates are the
+        first two numbers in the state vector.
+        Landing outside the landing pad is possible. Fuel is infinite, so an agent
+        can learn to fly and then land on its first attempt.
 
-    ### Action Space
-    There are four discrete actions available: do nothing, fire left
-    orientation engine, fire main engine, fire right orientation engine.
+        To see a heuristic landing, run::
+            ```
+            python gym/envs/box2d/lunar_lander.py
+            ```
 
-    ### Observation Space
-    There are 8 states: the coordinates of the lander in `x` & `y`, its linear
-    velocities in `x` & `y`, its angle, its angular velocity, and two booleans
-    that represent whether each leg is in contact with the ground or not.
+    Action Space:
+        There are four discrete actions available: do nothing, fire left
+        orientation engine, fire main engine, fire right orientation engine.
 
-    ### Rewards
-    Reward for moving from the top of the screen to the landing pad and coming
-    to rest is about 100-140 points.
-    If the lander moves away from the landing pad, it loses reward.
-    If the lander crashes, it receives an additional -100 points. If it comes
-    to rest, it receives an additional +100 points. Each leg with ground
-    contact is +10 points.
-    Firing the main engine is -0.3 points each frame. Firing the side engine
-    is -0.03 points each frame. Solved is 200 points.
+    Observation Space:
+        There are 8 states: the coordinates of the lander in `x` & `y`, its linear
+        velocities in `x` & `y`, its angle, its angular velocity, and two booleans
+        that represent whether each leg is in contact with the ground or not.
 
-    ### Starting State
-    The lander starts at the top center of the viewport with a random initial
-    force applied to its center of mass.
+    Rewards:
+        Reward for moving from the top of the screen to the landing pad and coming
+        to rest is about 100-140 points.
+        If the lander moves away from the landing pad, it loses reward.
+        If the lander crashes, it receives an additional -100 points. If it comes
+        to rest, it receives an additional +100 points. Each leg with ground
+        contact is +10 points.
+        Firing the main engine is -0.3 points each frame. Firing the side engine
+        is -0.03 points each frame. Solved is 200 points.
 
-    ### Episode Termination
-    The episode finishes if:
-    1) the lander crashes (the lander body gets in contact with the moon);
-    2) the lander gets outside of the viewport (`x` coordinate is greater than 1);
-    3) the lander is not awake. From the [Box2D docs](https://box2d.org/documentation/md__d_1__git_hub_box2d_docs_dynamics.html#autotoc_md61),
-        a body which is not awake is a body which doesn't move and doesn't
-        collide with any other body:
-    > When Box2D determines that a body (or group of bodies) has come to rest,
-    > the body enters a sleep state which has very little CPU overhead. If a
-    > body is awake and collides with a sleeping body, then the sleeping body
-    > wakes up. Bodies will also wake up if a joint or contact attached to
-    > them is destroyed.
+    Starting State:
+        The lander starts at the top center of the viewport with a random initial
+        force applied to its center of mass.
 
-    ### Arguments
-    To use to the _continuous_ environment, you need to specify the
-    `continuous=True` argument like below:
-    ```python
-    import gym
-    env = gym.make(
-        "LunarLander-v2",
-        continuous: bool = False,
-        gravity: float = -10.0,
-        enable_wind: bool = False,
-        wind_power: float = 15.0,
-    )
-    ```
-    If `continuous=True` is passed, continuous actions (corresponding to the throttle of the engines) will be used and the
-    action space will be `Box(-1, +1, (2,), dtype=np.float32)`.
-    The first coordinate of an action determines the throttle of the main engine, while the second
-    coordinate specifies the throttle of the lateral boosters.
-    Given an action `np.array([main, lateral])`, the main engine will be turned off completely if
-    `main < 0` and the throttle scales affinely from 50% to 100% for `0 <= main <= 1` (in particular, the
-    main engine doesn't work  with less than 50% power).
-    Similarly, if `-0.5 < lateral < 0.5`, the lateral boosters will not fire at all. If `lateral < -0.5`, the left
-    booster will fire, and if `lateral > 0.5`, the right booster will fire. Again, the throttle scales affinely
-    from 50% to 100% between -1 and -0.5 (and 0.5 and 1, respectively).
+    Episode Termination:
+        The episode finishes if:
+        1) the lander crashes (the lander body gets in contact with the moon);
+        2) the lander gets outside of the viewport (`x` coordinate is greater than 1);
+        3) the lander is not awake. From the [Box2D docs](https://box2d.org/documentation/md__d_1__git_hub_box2d_docs_dynamics.html#autotoc_md61),
+            a body which is not awake is a body which doesn't move and doesn't
+            collide with any other body:
+        > When Box2D determines that a body (or group of bodies) has come to rest,
+        > the body enters a sleep state which has very little CPU overhead. If a
+        > body is awake and collides with a sleeping body, then the sleeping body
+        > wakes up. Bodies will also wake up if a joint or contact attached to
+        > them is destroyed.
 
-    `gravity` dictates the gravitational constant, this is bounded to be within 0 and -12.
+    Arguments:
+        To use to the _continuous_ environment, you need to specify the
+        `continuous=True` argument like below::
+            ```python
+            import gym
+            env = gym.make(
+                "LunarLander-v2",
+                continuous: bool = False,
+                gravity: float = -10.0,
+                enable_wind: bool = False,
+                wind_power: float = 15.0,
+            )
+            ```
 
-    If `enable_wind=True` is passed, there will be wind effects applied to the lander.
-    The wind is generated using the function `tanh(sin(2 k (t+C)) + sin(pi k (t+C)))`.
-    `k` is set to 0.01.
-    `C` is sampled randomly between -9999 and 9999.
+        If `continuous=True` is passed, continuous actions (corresponding to the throttle of the engines) will be used and the
+        action space will be `Box(-1, +1, (2,), dtype=np.float32)`.
+        The first coordinate of an action determines the throttle of the main engine, while the second
+        coordinate specifies the throttle of the lateral boosters.
+        Given an action `np.array([main, lateral])`, the main engine will be turned off completely if
+        `main < 0` and the throttle scales affinely from 50% to 100% for `0 <= main <= 1` (in particular, the
+        main engine doesn't work  with less than 50% power).
+        Similarly, if `-0.5 < lateral < 0.5`, the lateral boosters will not fire at all. If `lateral < -0.5`, the left
+        booster will fire, and if `lateral > 0.5`, the right booster will fire. Again, the throttle scales affinely
+        from 50% to 100% between -1 and -0.5 (and 0.5 and 1, respectively).
 
-    `wind_power` dictates the maximum magnitude of wind.
+        `gravity` dictates the gravitational constant, this is bounded to be within 0 and -12.
 
-    ### Version History
-    - v2: Count energy spent
-    - v1: Legs contact with ground added in state vector; contact with ground
-        give +10 reward points, and -10 if then lose contact; reward
-        renormalized to 200; harder initial random push.
-    - v0: Initial version
+        If `enable_wind=True` is passed, there will be wind effects applied to the lander.
+        The wind is generated using the function `tanh(sin(2 k (t+C)) + sin(pi k (t+C)))`.
+        `k` is set to 0.01.
+        `C` is sampled randomly between -9999 and 9999.
 
-    <!-- ### References -->
+        `wind_power` dictates the maximum magnitude of wind.
 
-    ### Credits
-    Created by Oleg Klimov
+    Version History:
+        - v2: Count energy spent
+        - v1: Legs contact with ground added in state vector; contact with ground
+            give +10 reward points, and -10 if then lose contact; reward
+            renormalized to 200; harder initial random push.
+        - v0: Initial version
+
+    Credits:
+        Created by Oleg Klimov
     """
 
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": FPS}
@@ -177,6 +181,14 @@ class LunarLander(gym.Env, EzPickle):
         enable_wind: bool = False,
         wind_power: float = 15.0,
     ):
+        """Initialises the environment.
+
+        Args:
+            continuous: If the action space is continuous or discrete
+            gravity: The gravity of the environment
+            enable_wind: If to enable wind
+            wind_power: The wind power
+        """
         EzPickle.__init__(self)
 
         assert (
@@ -268,6 +280,7 @@ class LunarLander(gym.Env, EzPickle):
         return_info: bool = False,
         options: Optional[dict] = None,
     ):
+        """Resets the environment."""
         super().reset(seed=seed)
         self._destroy()
         self.world.contactListener_keepref = ContactDetector(self)
@@ -400,6 +413,7 @@ class LunarLander(gym.Env, EzPickle):
             self.world.DestroyBody(self.particles.pop(0))
 
     def step(self, action):
+        """Steps through the environment."""
         # Update wind
         if self.enable_wind and not (
             self.legs[0].ground_contact or self.legs[1].ground_contact
@@ -539,7 +553,8 @@ class LunarLander(gym.Env, EzPickle):
             reward = +100
         return np.array(state, dtype=np.float32), reward, done, {}
 
-    def render(self, mode="human"):
+    def render(self, mode: str = "human"):
+        """Renders the environment."""
         try:
             import pygame
             from pygame import gfxdraw
@@ -649,6 +664,7 @@ class LunarLander(gym.Env, EzPickle):
             return self.isopen
 
     def close(self):
+        """Closes the environment."""
         if self.screen is not None:
             import pygame
 
@@ -657,27 +673,24 @@ class LunarLander(gym.Env, EzPickle):
             self.isopen = False
 
 
-def heuristic(env, s):
-    """
-    The heuristic for
-    1. Testing
-    2. Demonstration rollout.
+def heuristic(env: LunarLander, s):
+    """The heuristic for testing or demonstration rollout.
 
     Args:
         env: The environment
-        s (list): The state. Attributes:
-                  s[0] is the horizontal coordinate
-                  s[1] is the vertical coordinate
-                  s[2] is the horizontal speed
-                  s[3] is the vertical speed
-                  s[4] is the angle
-                  s[5] is the angular speed
-                  s[6] 1 if first leg has contact, else 0
-                  s[7] 1 if second leg has contact, else 0
-    returns:
-         a: The heuristic to be fed into the step function defined above to determine the next step and reward.
-    """
+        s: The state with attributes:
+          s[0] is the horizontal coordinate
+          s[1] is the vertical coordinate
+          s[2] is the horizontal speed
+          s[3] is the vertical speed
+          s[4] is the angle
+          s[5] is the angular speed
+          s[6] 1 if first leg has contact, else 0
+          s[7] 1 if second leg has contact, else 0
 
+    Returns:
+        a: The heuristic to be fed into the step function defined above to determine the next step and reward.
+    """
     angle_targ = s[0] * 0.5 + s[2] * 1.0  # angle should point towards center
     if angle_targ > 0.4:
         angle_targ = 0.4  # more than 0.4 radians (22 degrees) is bad
@@ -710,8 +723,10 @@ def heuristic(env, s):
     return a
 
 
-def demo_heuristic_lander(env, seed=None, render=False):
-
+def demo_heuristic_lander(
+    env: LunarLander, seed: Optional[int] = None, render: bool = False
+):
+    """Demo heuristic lander for a lunar lander environment."""
     total_reward = 0
     steps = 0
     s = env.reset(seed=seed)
@@ -737,7 +752,10 @@ def demo_heuristic_lander(env, seed=None, render=False):
 
 
 class LunarLanderContinuous:
+    """A continuous lunar lander that is deprecated."""
+
     def __init__(self):
+        """Deprecated lunar lander."""
         raise error.Error(
             "Error initializing LunarLanderContinuous Environment.\n"
             "Currently, we do not support initializing this mode of environment by calling the class directly.\n"

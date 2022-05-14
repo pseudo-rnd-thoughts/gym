@@ -1,7 +1,10 @@
+"""Frozen lake environment."""
+from __future__ import annotations
+
 from contextlib import closing
 from io import StringIO
 from os import path
-from typing import Optional
+from typing import Optional, Union
 
 import numpy as np
 
@@ -29,10 +32,15 @@ MAPS = {
 }
 
 
-def generate_random_map(size=8, p=0.8):
-    """Generates a random valid map (one that has a path from start to goal)
-    :param size: size of each side of the grid
-    :param p: probability that a tile is frozen
+def generate_random_map(size: int = 8, p: float = 0.8) -> list[str]:
+    """Generates a random valid map (one that has a path from start to goal).
+
+    Args:
+        size: size of each side of the grid
+        p: probability that a tile is frozen
+
+    Returns:
+        The random map
     """
     valid = False
 
@@ -66,81 +74,85 @@ def generate_random_map(size=8, p=0.8):
 
 
 class FrozenLakeEnv(Env):
-    """
-    Frozen lake involves crossing a frozen lake from Start(S) to Goal(G) without falling into any Holes(H) by walking over
-    the Frozen(F) lake. The agent may not always move in the intended direction due to the slippery nature of the frozen lake.
+    """Frozen lake environment.
 
+    Description:
+        Frozen lake involves crossing a frozen lake from Start(S) to Goal(G)
+        without falling into any Holes(H) by walking over the Frozen(F) lake.
+        The agent may not always move in the intended direction due to the
+        slippery nature of the frozen lake.
 
-    ### Action Space
-    The agent takes a 1-element vector for actions.
-    The action space is `(dir)`, where `dir` decides direction to move in which can be:
+    Action Space:
+        The agent takes a 1-element vector for actions.
+        The action space is `(dir)`, where `dir` decides direction to move in which can be:
+        - 0: LEFT
+        - 1: DOWN
+        - 2: RIGHT
+        - 3: UP
 
-    - 0: LEFT
-    - 1: DOWN
-    - 2: RIGHT
-    - 3: UP
+    Observation Space:
+        The observation is a value representing the agent's current position as
+        ``current_row * nrows + current_col`` (where both the row and col start at 0).
+        For example, the goal position in the 4x4 map can be calculated as follows: 3 * 4 + 3 = 15.
+        The number of possible observations is dependent on the size of the map.
+        For example, the 4x4 map has 16 possible observations.
 
-    ### Observation Space
-    The observation is a value representing the agent's current position as
-    current_row * nrows + current_col (where both the row and col start at 0).
-    For example, the goal position in the 4x4 map can be calculated as follows: 3 * 4 + 3 = 15.
-    The number of possible observations is dependent on the size of the map.
-    For example, the 4x4 map has 16 possible observations.
+    Rewards:
+        Reward schedule:
+        - Reach goal(G): +1
+        - Reach hole(H): 0
+        - Reach frozen(F): 0
 
-    ### Rewards
+    Arguments:
+        ```
+        gym.make('FrozenLake-v1', desc=None,map_name="4x4", is_slippery=True)
+        ```
 
-    Reward schedule:
-    - Reach goal(G): +1
-    - Reach hole(H): 0
-    - Reach frozen(F): 0
+        `desc`: Used to specify custom map for frozen lake. For example,
+            ``desc=["SFFF", "FHFH", "FFFH", "HFFG"]``.
 
-    ### Arguments
+        `map_name`: ID to use any of the preloaded maps.
+            "4x4":["SFFF", "FHFH", "FFFH", "HFFG"]
 
-    ```
-    gym.make('FrozenLake-v1', desc=None,map_name="4x4", is_slippery=True)
-    ```
-
-    `desc`: Used to specify custom map for frozen lake. For example,
-
-        desc=["SFFF", "FHFH", "FFFH", "HFFG"].
-
-    `map_name`: ID to use any of the preloaded maps.
-
-        "4x4":[
-            "SFFF",
-            "FHFH",
-            "FFFH",
-            "HFFG"
+            "8x8": [
+                "SFFFFFFF",
+                "FFFFFFFF",
+                "FFFHFFFF",
+                "FFFFFHFF",
+                "FFFHFFFF",
+                "FHHFFFHF",
+                "FHFFHFHF",
+                "FFFHFFFG",
             ]
 
-        "8x8": [
-            "SFFFFFFF",
-            "FFFFFFFF",
-            "FFFHFFFF",
-            "FFFFFHFF",
-            "FFFHFFFF",
-            "FHHFFFHF",
-            "FHFFHFHF",
-            "FFFHFFFG",
-        ]
-
-    `is_slippery`: True/False. If True will move in intended direction with
-    probability of 1/3 else will move in either perpendicular direction with
-    equal probability of 1/3 in both directions.
-
+        `is_slippery`: True/False. If True, moves in intended direction with
+        probability of 1/3 else will move in either perpendicular direction with
+        equal probability of 1/3 in both directions.
         For example, if action is left and is_slippery is True, then:
         - P(move left)=1/3
         - P(move up)=1/3
         - P(move down)=1/3
 
-    ### Version History
-    * v1: Bug fixes to rewards
-    * v0: Initial versions release (1.0.0)
+    Version History:
+        * v1: Bug fixes with rewards
+        * v0: Initial versions release (1.0.0)
     """
 
     metadata = {"render_modes": ["human", "ansi", "rgb_array"], "render_fps": 4}
 
-    def __init__(self, desc=None, map_name="4x4", is_slippery=True):
+    def __init__(
+        self,
+        desc: Optional[Union[np.ndarray, list]] = None,
+        map_name: str = "4x4",
+        is_slippery: bool = True,
+    ):
+        """Initialises the frozen lake environment.
+
+        Args:
+            desc: The random map information
+            map_name: The map name of the map to initialise with
+            is_slippery: If to make the tiles slippery
+        """
         if desc is None and map_name is None:
             desc = generate_random_map()
         elif desc is None:
@@ -157,7 +169,8 @@ class FrozenLakeEnv(Env):
 
         self.P = {s: {a: [] for a in range(nA)} for s in range(nS)}
 
-        def to_s(row, col):
+        def to_s(row: int, col: int) -> int:
+            """Converts the row and column positions to the index."""
             return row * ncol + col
 
         def inc(row, col, a):
@@ -211,6 +224,7 @@ class FrozenLakeEnv(Env):
         self.start_img = None
 
     def step(self, a):
+        """Steps through the environment."""
         transitions = self.P[self.s][a]
         i = categorical_sample([t[0] for t in transitions], self.np_random)
         p, s, r, d = transitions[i]
@@ -225,6 +239,7 @@ class FrozenLakeEnv(Env):
         return_info: bool = False,
         options: Optional[dict] = None,
     ):
+        """Resets the environment."""
         super().reset(seed=seed)
         self.s = categorical_sample(self.initial_state_distrib, self.np_random)
         self.lastaction = None
@@ -234,7 +249,8 @@ class FrozenLakeEnv(Env):
         else:
             return int(self.s), {"prob": 1}
 
-    def render(self, mode="human"):
+    def render(self, mode: str = "human"):
+        """Renders the environment."""
         desc = self.desc.tolist()
         if mode == "ansi":
             return self._render_text(desc)
@@ -375,6 +391,7 @@ class FrozenLakeEnv(Env):
             return outfile.getvalue()
 
     def close(self):
+        """Closes the pygame window if opened."""
         if self.window_surface is not None:
             import pygame
 

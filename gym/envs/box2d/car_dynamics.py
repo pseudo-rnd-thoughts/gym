@@ -1,7 +1,7 @@
-"""
-Top-down car dynamics simulation.
+"""Top-down car dynamics simulation.
 
-Some ideas are taken from this great tutorial http://www.iforce2d.net/b2dtut/top-down-car by Chris Campbell.
+Some ideas are taken from this great tutorial
+https://www.iforce2d.net/b2dtut/top-down-car by Chris Campbell.
 This simulation is a bit more detailed, with wheels rotation.
 
 Created by Oleg Klimov
@@ -50,7 +50,10 @@ PLAYFIELD = 2000 / SCALE  # Game over boundary
 
 
 class Car:
+    """Car for top-down simulation."""
+
     def __init__(self, world, init_angle, init_x, init_y):
+        """Initialises the car."""
         self.world = world
         self.hull = self.world.CreateDynamicBody(
             position=(init_x, init_y),
@@ -138,7 +141,7 @@ class Car:
         self.particles = []
 
     def gas(self, gas):
-        """control: rear wheel drive
+        """Controls the rear wheels of the car.
 
         Args:
             gas (float): How much gas gets applied. Gets clipped between 0 and 1.
@@ -151,22 +154,26 @@ class Car:
             w.gas += diff
 
     def brake(self, b):
-        """control: brake
+        """Controls the brakes of the car.
 
         Args:
-            b (0..1): Degree to which the brakes are applied. More than 0.9 blocks the wheels to zero rotation"""
+            b: Degree to which the brakes are applied, valid range between [0, 1).
+               More than 0.9 blocks the wheels to zero rotation
+        """
         for w in self.wheels:
             w.brake = b
 
     def steer(self, s):
-        """control: steer
+        """Controls of the steering of the car.
 
         Args:
-            s (-1..1): target position, it takes time to rotate steering wheel from side-to-side"""
+            s: target position, it takes time to rotate steering wheel from side-to-side. Valid range between [-1, 1].
+        """
         self.wheels[0].steer = s
         self.wheels[1].steer = s
 
     def step(self, dt):
+        """Steps through the environment."""
         for w in self.wheels:
             # Steer each wheel
             dir = np.sign(w.steer - w.joint.angle)
@@ -263,6 +270,7 @@ class Car:
             )
 
     def draw(self, surface, zoom, translation, angle, draw_particles=True):
+        """Draws the particle dynamics for rendering."""
         import pygame.draw
 
         if draw_particles:
@@ -354,6 +362,7 @@ class Car:
         return p
 
     def destroy(self):
+        """Destroys the car."""
         self.world.DestroyBody(self.hull)
         self.hull = None
         for w in self.wheels:

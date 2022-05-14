@@ -1,3 +1,4 @@
+"""Blackjack environments."""
 import os
 from typing import Optional
 
@@ -6,9 +7,11 @@ import numpy as np
 import gym
 from gym import spaces
 from gym.error import DependencyNotInstalled
+from gym.utils.seeding import RandomNumberGenerator
 
 
-def cmp(a, b):
+def cmp(a: float, b: float) -> float:
+    """Compares a and b, if a > b, return 1, a < b, returns -1 else a == b, returns 0."""
     return float(a > b) - float(a < b)
 
 
@@ -16,103 +19,113 @@ def cmp(a, b):
 deck = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 10, 10]
 
 
-def draw_card(np_random):
+def draw_card(np_random: RandomNumberGenerator) -> int:
+    """Draws a card from the desk."""
     return int(np_random.choice(deck))
 
 
-def draw_hand(np_random):
+def draw_hand(np_random: RandomNumberGenerator) -> list[int]:
+    """Draws a hand, returning a list of two cards."""
     return [draw_card(np_random), draw_card(np_random)]
 
 
-def usable_ace(hand):  # Does this hand have a usable ace?
+def usable_ace(hand: list[int]) -> bool:
+    """Returns if the hand has a usable ace in the hand."""
     return 1 in hand and sum(hand) + 10 <= 21
 
 
-def sum_hand(hand):  # Return current hand total
+def sum_hand(hand: list[int]) -> int:
+    """Computes the sum of the hand total."""
     if usable_ace(hand):
         return sum(hand) + 10
     return sum(hand)
 
 
-def is_bust(hand):  # Is this hand a bust?
+def is_bust(hand: list[int]) -> bool:
+    """Checks if the hand is bust."""
     return sum_hand(hand) > 21
 
 
-def score(hand):  # What is the score of this hand (0 if bust)
+def score(hand: list[int]) -> int:
+    """Scores the hand, 0 if bust, else the hand total."""
     return 0 if is_bust(hand) else sum_hand(hand)
 
 
-def is_natural(hand):  # Is this hand a natural blackjack?
+def is_natural(hand: list[int]) -> bool:
+    """Checks if the hand is natural (sorted hand == [1, 10])."""
     return sorted(hand) == [1, 10]
 
 
 class BlackjackEnv(gym.Env):
-    """
+    """Blackjack environment.
+
     Blackjack is a card game where the goal is to beat the dealer by obtaining cards
     that sum to closer to 21 (without going over 21) than the dealers cards.
 
-    ### Description
-    Card Values:
+    Description:
+        Card Values:
+        - Face cards (Jack, Queen, King) have a point value of 10.
+        - Aces can either count as 11 (called a 'usable ace') or 1.
+        - Numerical cards (2-9) have a value equal to their number.
 
-    - Face cards (Jack, Queen, King) have a point value of 10.
-    - Aces can either count as 11 (called a 'usable ace') or 1.
-    - Numerical cards (2-9) have a value equal to their number.
+        This game is played with an infinite deck (or with replacement).
+        The game starts with the dealer having one face up and one face down card,
+        while the player has two face up cards.
 
-    This game is played with an infinite deck (or with replacement).
-    The game starts with the dealer having one face up and one face down card,
-    while the player has two face up cards.
+        The player can request additional cards (hit, action=1) until they decide to stop (stick, action=0)
+        or exceed 21 (bust, immediate loss).
+        After the player sticks, the dealer reveals their face-down card, and draws
+        until their sum is 17 or greater.  If the dealer goes bust, the player wins.
+        If neither the player nor the dealer busts, the outcome (win, lose, draw) is
+        decided by whose sum is closer to 21.
 
-    The player can request additional cards (hit, action=1) until they decide to stop (stick, action=0)
-    or exceed 21 (bust, immediate loss).
-    After the player sticks, the dealer reveals their facedown card, and draws
-    until their sum is 17 or greater.  If the dealer goes bust, the player wins.
-    If neither the player nor the dealer busts, the outcome (win, lose, draw) is
-    decided by whose sum is closer to 21.
+    Action Space:
+        There are two actions: stick (0), and hit (1).
 
-    ### Action Space
-    There are two actions: stick (0), and hit (1).
+    Observation Space:
+        The observation consists of a 3-tuple containing: the player's current sum,
+        the value of the dealer's one showing card (1-10 where 1 is ace),
+        and whether the player holds a usable ace (0 or 1).
 
-    ### Observation Space
-    The observation consists of a 3-tuple containing: the player's current sum,
-    the value of the dealer's one showing card (1-10 where 1 is ace),
-    and whether the player holds a usable ace (0 or 1).
+        This environment corresponds to the version of the blackjack problem
+        described in Example 5.1 in Reinforcement Learning: An Introduction
+        by Sutton and Barto (http://incompleteideas.net/book/the-book-2nd.html).
 
-    This environment corresponds to the version of the blackjack problem
-    described in Example 5.1 in Reinforcement Learning: An Introduction
-    by Sutton and Barto (http://incompleteideas.net/book/the-book-2nd.html).
+    Rewards:
+        - win game: +1
+        - lose game: -1
+        - draw game: 0
+        - win game with natural blackjack:
+            - +1.5 (if **natural** is True)
+            - +1 (if **natural** is False)
 
-    ### Rewards
-    - win game: +1
-    - lose game: -1
-    - draw game: 0
-    - win game with natural blackjack:
+    Arguments:
+        ```
+        gym.make('Blackjack-v1', natural=False, sab=False)
+        ```
 
-        +1.5 (if <a href="#nat">natural</a> is True)
+        `natural=False`: Whether to give an additional reward for
+        starting with a natural blackjack, i.e. starting with an ace and ten (sum is 21).
 
-        +1 (if <a href="#nat">natural</a> is False)
+        `sab=False`: Whether to follow the exact rules outlined in the book by
+        Sutton and Barto. If `sab` is `True`, the keyword argument `natural` will be ignored.
+        If the player achieves a natural blackjack and the dealer does not, the player
+        will win (i.e. get a reward of +1). The reverse rule does not apply.
+        If both the player and the dealer get a natural, it will be a draw (i.e. reward 0).
 
-    ### Arguments
-
-    ```
-    gym.make('Blackjack-v1', natural=False, sab=False)
-    ```
-
-    <a id="nat">`natural=False`</a>: Whether to give an additional reward for
-    starting with a natural blackjack, i.e. starting with an ace and ten (sum is 21).
-
-    <a id="sab">`sab=False`</a>: Whether to follow the exact rules outlined in the book by
-    Sutton and Barto. If `sab` is `True`, the keyword argument `natural` will be ignored.
-    If the player achieves a natural blackjack and the dealer does not, the player
-    will win (i.e. get a reward of +1). The reverse rule does not apply.
-    If both the player and the dealer get a natural, it will be a draw (i.e. reward 0).
-
-    ### Version History
-    * v0: Initial versions release (1.0.0)
+    Version History
+        * v0: Initial versions release (1.0.0)
     """
 
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 4}
 
-    def __init__(self, natural=False, sab=False):
+    def __init__(self, natural: bool = False, sab: bool = False):
+        """Initialises the blackjack environment.
+
+        Args:
+            natural: If to payout on a natural blackjack hand
+            sab: For full agreement with Sutton and Barto, 2018 definition
+        """
         self.action_space = spaces.Discrete(2)
         self.observation_space = spaces.Tuple(
             (spaces.Discrete(32), spaces.Discrete(11), spaces.Discrete(2))
@@ -126,6 +139,7 @@ class BlackjackEnv(gym.Env):
         self.sab = sab
 
     def step(self, action):
+        """Steps the environment."""
         assert self.action_space.contains(action)
         if action:  # hit: add a card to players hand and return
             self.player.append(draw_card(self.np_random))
@@ -154,7 +168,7 @@ class BlackjackEnv(gym.Env):
         return self._get_obs(), reward, done, {}
 
     def _get_obs(self):
-        return (sum_hand(self.player), self.dealer[0], usable_ace(self.player))
+        return sum_hand(self.player), self.dealer[0], usable_ace(self.player)
 
     def reset(
         self,
@@ -162,6 +176,7 @@ class BlackjackEnv(gym.Env):
         return_info: bool = False,
         options: Optional[dict] = None,
     ):
+        """Resets the environment."""
         super().reset(seed=seed)
         self.dealer = draw_hand(self.np_random)
         self.player = draw_hand(self.np_random)
@@ -171,6 +186,7 @@ class BlackjackEnv(gym.Env):
             return self._get_obs(), {}
 
     def render(self, mode="human"):
+        """Renders the environments."""
         try:
             import pygame
         except ImportError:
@@ -288,6 +304,7 @@ class BlackjackEnv(gym.Env):
             )
 
     def close(self):
+        """Closes the screen is opened."""
         if hasattr(self, "screen"):
             import pygame
 

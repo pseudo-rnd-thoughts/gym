@@ -1,3 +1,4 @@
+"""__init__ of the environments that registers all environments."""
 from gym.envs.registration import load_env_plugins as _load_env_plugins
 from gym.envs.registration import make, register, registry, spec
 
