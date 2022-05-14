@@ -1,7 +1,8 @@
 """Wrapper for transforming observations."""
-from typing import Any, Callable
+from typing import Callable
 
 import gym
+from gym.core import ObsType
 
 
 class TransformObservation(gym.ObservationWrapper):
@@ -20,7 +21,7 @@ class TransformObservation(gym.ObservationWrapper):
         array([-0.08319338,  0.04635121, -0.07394746,  0.20877492])
     """
 
-    def __init__(self, env: gym.Env, f: Callable[[Any], Any]):
+    def __init__(self, env: gym.Env, f: Callable[[ObsType], ObsType]):
         """Initialize the :class:`TransformObservation` wrapper with an environment and a transform function :param:`f`.
 
         Args:

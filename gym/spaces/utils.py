@@ -124,7 +124,9 @@ def unflatten(space: Space[T], x: np.ndarray) -> T:
 
 @unflatten.register(Box)
 @unflatten.register(MultiBinary)
-def _unflatten_box_multibinary(space: Box | MultiBinary, x: np.ndarray) -> np.ndarray:
+def _unflatten_box_multibinary(
+    space: Union[Box, MultiBinary], x: np.ndarray
+) -> np.ndarray:
     return np.asarray(x, dtype=space.dtype).reshape(space.shape)
 
 

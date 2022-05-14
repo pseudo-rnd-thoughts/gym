@@ -1,7 +1,7 @@
 import hashlib
 import os
 import struct
-from typing import Any, List, Optional, Tuple, Union
+from typing import List, Optional, Tuple, Union
 
 import numpy as np
 
@@ -9,7 +9,7 @@ from gym import error
 from gym.logger import deprecation
 
 
-def np_random(seed: Optional[int] = None) -> Tuple["RandomNumberGenerator", Any]:
+def np_random(seed: Optional[int] = None) -> Tuple["RandomNumberGenerator", int]:
     if seed is not None and not (isinstance(seed, int) and 0 <= seed):
         raise error.Error(f"Seed must be a non-negative integer or omitted, not {seed}")
 

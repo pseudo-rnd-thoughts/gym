@@ -1,7 +1,7 @@
 """Implementation of a space that represents closed boxes in euclidean space."""
 from __future__ import annotations
 
-from typing import Optional, Sequence, SupportsFloat, Tuple, Type, Union
+from typing import Optional, Sequence, SupportsFloat, Tuple, Union
 
 import numpy as np
 
@@ -46,8 +46,8 @@ class Box(Space[np.ndarray]):
         low: Union[SupportsFloat, np.ndarray],
         high: Union[SupportsFloat, np.ndarray],
         shape: Optional[Sequence[int]] = None,
-        dtype: Type = np.float32,
-        seed: Optional[int | seeding.RandomNumberGenerator] = None,
+        dtype: type = np.float32,
+        seed: Optional[Union[int, seeding.RandomNumberGenerator]] = None,
     ):
         r"""Constructor of :class:`Box`.
 

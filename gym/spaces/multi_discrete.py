@@ -33,7 +33,7 @@ class MultiDiscrete(Space[np.ndarray]):
         self,
         nvec: Union[np.ndarray, list[int]],
         dtype=np.int64,
-        seed: Optional[int | seeding.RandomNumberGenerator] = None,
+        seed: Optional[Union[int, seeding.RandomNumberGenerator]] = None,
     ):
         """Constructor of :class:`MultiDiscrete` space.
 

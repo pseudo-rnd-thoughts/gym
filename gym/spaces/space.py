@@ -1,7 +1,7 @@
 """Implementation of the `Space` metaclass."""
 from __future__ import annotations
 
-from typing import Generic, Iterable, Mapping, Optional, Sequence, Type, TypeVar
+from typing import Generic, Iterable, Mapping, Optional, Sequence, Type, TypeVar, Union
 
 import numpy as np
 
@@ -37,8 +37,8 @@ class Space(Generic[T_cov]):
     def __init__(
         self,
         shape: Optional[Sequence[int]] = None,
-        dtype: Optional[Type | str] = None,
-        seed: Optional[int | seeding.RandomNumberGenerator] = None,
+        dtype: Optional[Union[Type, str, np.dtype]] = None,
+        seed: Optional[Union[int, seeding.RandomNumberGenerator]] = None,
     ):
         """Constructor of :class:`Space`.
 
@@ -86,7 +86,7 @@ class Space(Generic[T_cov]):
         """Return boolean specifying if x is a valid member of this space."""
         return self.contains(x)
 
-    def __setstate__(self, state: Iterable | Mapping):
+    def __setstate__(self, state: Union[Iterable, Mapping]):
         """Used when loading a pickled space.
 
         This method was implemented explicitly to allow for loading of legacy states.

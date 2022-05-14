@@ -4,7 +4,7 @@ from __future__ import annotations
 from collections import OrderedDict
 from collections.abc import Mapping, Sequence
 from typing import Dict as TypingDict
-from typing import Optional
+from typing import Optional, Union
 
 import numpy as np
 
@@ -52,7 +52,7 @@ class Dict(Space[TypingDict[str, Space]], Mapping):
     def __init__(
         self,
         spaces: Optional[dict[str, Space]] = None,
-        seed: Optional[dict | int | seeding.RandomNumberGenerator] = None,
+        seed: Optional[Union[dict, int, seeding.RandomNumberGenerator]] = None,
         **spaces_kwargs: Space,
     ):
         """Constructor of :class:`Dict` space.
@@ -98,7 +98,7 @@ class Dict(Space[TypingDict[str, Space]], Mapping):
             None, None, seed  # type: ignore
         )  # None for shape and dtype, since it'll require special handling
 
-    def seed(self, seed: Optional[dict | int] = None) -> list:
+    def seed(self, seed: Optional[Union[dict, int]] = None) -> list:
         """Seed the PRNG of this space and all subspaces."""
         seeds = []
         if isinstance(seed, dict):

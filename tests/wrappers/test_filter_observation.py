@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Sequence
 
 import numpy as np
 import pytest
@@ -9,7 +9,7 @@ from gym.wrappers.filter_observation import FilterObservation
 
 
 class FakeEnvironment(gym.Env):
-    def __init__(self, observation_keys=("state")):
+    def __init__(self, observation_keys: Sequence[str] = ("state",)):
         self.observation_space = spaces.Dict(
             {
                 name: spaces.Box(shape=(2,), low=-1, high=1, dtype=np.float32)
@@ -44,44 +44,38 @@ FILTER_OBSERVATION_TEST_CASES = (
 )
 
 ERROR_TEST_CASES = (
-    ("key", ValueError, "All the filter_keys must be included..*"),
+    (("key",), ValueError, "All the filter_keys must be included..*"),
     (False, TypeError, "'bool' object is not iterable"),
     (1, TypeError, "'int' object is not iterable"),
 )
 
 
-class TestFilterObservation:
-    @pytest.mark.parametrize(
-        "observation_keys,filter_keys", FILTER_OBSERVATION_TEST_CASES
-    )
-    def test_filter_observation(self, observation_keys, filter_keys):
-        env = FakeEnvironment(observation_keys=observation_keys)
+@pytest.mark.parametrize("observation_keys,filter_keys", FILTER_OBSERVATION_TEST_CASES)
+def test_filter_observation(observation_keys, filter_keys):
+    env = FakeEnvironment(observation_keys=observation_keys)
 
-        # Make sure we are testing the right environment for the test.
-        observation_space = env.observation_space
-        assert isinstance(observation_space, spaces.Dict)
+    # Make sure we are testing the right environment for the test.
+    observation_space = env.observation_space
+    assert isinstance(observation_space, spaces.Dict)
 
-        wrapped_env = FilterObservation(env, filter_keys=filter_keys)
+    wrapped_env = FilterObservation(env, filter_keys=filter_keys)
 
-        assert isinstance(wrapped_env.observation_space, spaces.Dict)
+    assert isinstance(wrapped_env.observation_space, spaces.Dict)
 
-        if filter_keys is None:
-            filter_keys = tuple(observation_keys)
+    if filter_keys is None:
+        filter_keys = tuple(observation_keys)
 
-        assert len(wrapped_env.observation_space.spaces) == len(filter_keys)
-        assert tuple(wrapped_env.observation_space.spaces.keys()) == tuple(filter_keys)
+    assert len(wrapped_env.observation_space.spaces) == len(filter_keys)
+    assert tuple(wrapped_env.observation_space.spaces.keys()) == tuple(filter_keys)
 
-        # Check that the added space item is consistent with the added observation.
-        observation = wrapped_env.reset()
-        assert len(observation) == len(filter_keys)
+    # Check that the added space item is consistent with the added observation.
+    observation = wrapped_env.reset()
+    assert len(observation) == len(filter_keys)
 
-    @pytest.mark.parametrize("filter_keys,error_type,error_match", ERROR_TEST_CASES)
-    def test_raises_with_incorrect_arguments(
-        self, filter_keys, error_type, error_match
-    ):
-        env = FakeEnvironment(observation_keys=("key1", "key2"))
 
-        ValueError
+@pytest.mark.parametrize("filter_keys,error_type,error_match", ERROR_TEST_CASES)
+def test_raises_with_incorrect_arguments(filter_keys, error_type, error_match):
+    env = FakeEnvironment(observation_keys=("key1", "key2"))
 
-        with pytest.raises(error_type, match=error_match):
-            FilterObservation(env, filter_keys=filter_keys)
+    with pytest.raises(error_type, match=error_match):
+        FilterObservation(env, filter_keys=filter_keys)

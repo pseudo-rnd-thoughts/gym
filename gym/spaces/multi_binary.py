@@ -29,7 +29,7 @@ class MultiBinary(Space[np.ndarray]):
     def __init__(
         self,
         n: Union[np.ndarray, Sequence[int], int],
-        seed: Optional[int | seeding.RandomNumberGenerator] = None,
+        seed: Optional[Union[int, seeding.RandomNumberGenerator]] = None,
     ):
         """Constructor of :class:`MultiBinary` space.
 
