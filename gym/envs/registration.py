@@ -451,10 +451,15 @@ def make(
     """
     Create an environment according to the given ID.
 
+    Warnings:
+        In v0.24, env_checker is run on initialised environment to check if it matches the gym environment API.
+        To disable this, set `disable_env_checker=True`.
+
     Args:
         id: Name of the environment.
         max_episode_steps: Maximum length of an episode (TimeLimit wrapper).
         autoreset: Whether to automatically reset the environment after each episode (AutoResetWrapper).
+        disable_env_checker: If to disable the environment checker on initialisation
         kwargs: Additional arguments to pass to the environment constructor.
     Returns:
         An instance of the environment.
