@@ -6,7 +6,7 @@ from typing import Any, Iterator, Optional, Sequence, Union
 
 import numpy as np
 
-from gym.spaces import Space
+from gym import spaces
 from gym.vector.utils import concatenate, create_empty_array, iterate
 from gym.vector.vector_env import VectorEnv
 
@@ -31,8 +31,8 @@ class SyncVectorEnv(VectorEnv):
     def __init__(
         self,
         env_fns: Iterator[callable],
-        observation_space: Space = None,
-        action_space: Space = None,
+        observation_space: spaces.Space = None,
+        action_space: spaces.Space = None,
         copy: bool = True,
     ):
         """Vectorized environment that serially runs multiple environments.

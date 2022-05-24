@@ -276,7 +276,7 @@ def load_env_plugins(entry_point: str = "gym.envs") -> None:
 
 
 @overload
-def make(id: Literal["CartPole-v1"], **kwargs) -> Env[np.ndarray, np.ndarray | int]: ...
+def make(id: Literal["CartPole-v0", "CartPole-v1"], **kwargs) -> Env[np.ndarray, np.ndarray | int]: ...
 @overload
 def make(id: Literal["MountainCar-v0"], **kwargs) -> Env[np.ndarray, np.ndarray | int]: ...
 @overload
@@ -380,7 +380,8 @@ class EnvRegistry(dict):
     @property
     def env_specs(self):
         logger.warn(
-            "The `registry.env_specs` property along with `EnvSpecTree` is deprecated. Please use `registry` directly as a dictionary instead."
+            "The `registry.env_specs` property along with `EnvSpecTree` is deprecated. "
+            "Please use `registry` directly as a dictionary instead."
         )
         return self
 
@@ -545,7 +546,6 @@ def make(
     _kwargs = spec_.kwargs.copy()
     _kwargs.update(kwargs)
 
-    # TODO: add a minimal env checker on initialization
     if spec_.entry_point is None:
         raise error.Error(f"{spec_.id} registered but entry_point is not specified")
     elif callable(spec_.entry_point):

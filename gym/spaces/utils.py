@@ -7,7 +7,7 @@ from __future__ import annotations
 import operator as op
 from collections import OrderedDict
 from functools import reduce, singledispatch
-from typing import TypeVar, Union, cast
+from typing import TypeVar, Union, cast, Callable, Optional, Any, Sequence
 
 import numpy as np
 
@@ -25,9 +25,8 @@ def flatdim(space: Space) -> int:
 
     Example usage::
 
-        >>> from gym.spaces import Discrete
-        >>> space = Dict({"position": Discrete(2), "velocity": Discrete(3)})
-        >>> flatdim(space)
+        >>> s = Dict({"position": Discrete(2), "velocity": Discrete(3)})
+        >>> flatdim(s)
         5
     """
     raise NotImplementedError(f"Unknown space: `{space}`")
@@ -235,3 +234,61 @@ def _flatten_space_dict(space: Dict) -> Box:
         high=np.concatenate([s.high for s in space_list]),
         dtype=np.result_type(*[s.dtype for s in space_list]),
     )
+
+
+@singledispatch
+def apply_function(space: Space, x, func: Callable, args: Optional[Any]) -> Any:
+    """TODO
+
+    Example with fundamental space::
+        TODO
+
+    Example with dict (composite) space::
+        TODO
+
+    Example with tuple (composite) space::
+        TODO
+
+    Args:
+        space: TODO
+        x: TODO
+        func: TODO
+        args: TODO
+
+    Returns:
+        TODO
+    """
+
+
+@apply_function.register(Box)
+@apply_function.register(Discrete)
+@apply_function.register(MultiDiscrete)
+@apply_function.register(MultiBinary)
+def _apply_function_fundamental(_, x: Any, func: Callable, args: Optional[Any]):
+    return func(x, *args)
+
+
+@apply_function.register(Dict)
+def _apply_function_dict(space: Dict, x: Any, func: Callable, args: Optional[Any]):
+    if args is None:
+        return OrderedDict([(space_key, apply_function(subspace, x[space_key], func, None))
+                            for space_key, subspace in space.spaces.items()])
+    elif isinstance(args, dict):
+        return OrderedDict([
+            (key, apply_function(space[key], x[key], func, args[key]) if key in args else x[key])
+            for key in space.spaces.items()
+        ])
+    else:
+        raise Exception  # TODO, maybe unsure
+
+
+@apply_function.register(Tuple)
+def _apply_function_tuple(space: Tuple, x: Any, func: Callable, args: Optional[Any]):
+    if args is None:
+        return tuple(apply_function(subspace, val, func, None) for subspace, val in zip(space.spaces, x))
+    elif isinstance(args, Sequence):
+        assert len(args) == len(space)  # TODO, not sure if we can deal with less args than
+        return tuple(apply_function(subspace, val, func, arg)
+                     for subspace, val, arg in zip(space.spaces, x, args))
+    else:
+        raise Exception  # TODO

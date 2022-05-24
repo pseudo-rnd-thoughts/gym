@@ -1,9 +1,9 @@
 """Implementation of Atari 2600 Preprocessing following the guidelines of Machado et al., 2018."""
 import numpy as np
+from gym import spaces
 
 import gym
 from gym.error import DependencyNotInstalled
-from gym.spaces import Box
 
 try:
     import cv2
@@ -104,7 +104,7 @@ class AtariPreprocessing(gym.Wrapper):
         _shape = (screen_size, screen_size, 1 if grayscale_obs else 3)
         if grayscale_obs and not grayscale_newaxis:
             _shape = _shape[:-1]  # Remove channel axis
-        self.observation_space = Box(
+        self.observation_space = spaces.Box(
             low=_low, high=_high, shape=_shape, dtype=_obs_dtype
         )
 

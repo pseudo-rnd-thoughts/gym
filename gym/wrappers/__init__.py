@@ -11,7 +11,7 @@ from gym.dev_wrappers.lambda_observations import (
     lambda_observations_v0,
     normalize_observations_v0,
     observation_dtype_v0,
-    observations_reshape_v0,
+    reshape_observation_v0,
     resize_observations_v0,
 )
 from gym.dev_wrappers.lambda_reward import (

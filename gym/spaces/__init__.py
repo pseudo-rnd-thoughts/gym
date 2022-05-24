@@ -15,7 +15,7 @@ from gym.spaces.multi_binary import MultiBinary
 from gym.spaces.multi_discrete import MultiDiscrete
 from gym.spaces.space import Space
 from gym.spaces.tuple import Tuple
-from gym.spaces.utils import flatdim, flatten, flatten_space, unflatten
+from gym.spaces.utils import flatdim, flatten, flatten_space, unflatten, apply_function
 
 __all__ = [
     "Space",
@@ -29,4 +29,5 @@ __all__ = [
     "flatten_space",
     "flatten",
     "unflatten",
+    "apply_function"
 ]
