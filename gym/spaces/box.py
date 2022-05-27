@@ -211,9 +211,10 @@ class Box(Space[np.ndarray]):
         """Check whether `other` is equivalent to this instance."""
         return (
             isinstance(other, Box)
-            and (self.shape == other.shape)
+            and self.shape == other.shape
             and np.allclose(self.low, other.low)
             and np.allclose(self.high, other.high)
+            and self.dtype == other.dtype
         )
 
 

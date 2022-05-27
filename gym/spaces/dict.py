@@ -148,12 +148,12 @@ class Dict(Space[TypingDict[str, Space]], Mapping):
 
     def contains(self, x) -> bool:
         """Return boolean specifying if x is a valid member of this space."""
-        if not isinstance(x, dict) or len(x) != len(self.spaces):
+        if not isinstance(x, dict):
             return False
-        for k, space in self.spaces.items():
-            if k not in x:
-                return False
-            if not space.contains(x[k]):
+        elif x.keys() != self.spaces.keys():
+            return False
+        for key in self.spaces.keys():
+            if x[key] not in self.spaces[key]:
                 return False
         return True
 
@@ -202,3 +202,6 @@ class Dict(Space[TypingDict[str, Space]], Mapping):
                 entry[key] = value[i]
             ret.append(entry)
         return ret
+
+    def __eq__(self, other: Dict) -> bool:
+        return isinstance(other, Dict) and self.spaces.keys() == other.spaces.keys() and all(self.spaces[space] == other.spaces[space] for space in self.spaces.keys())

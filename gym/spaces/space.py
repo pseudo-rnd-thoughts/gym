@@ -118,3 +118,6 @@ class Space(Generic[T_cov]):
         """Convert a JSONable data type to a batch of samples from this space."""
         # By default, assume identity is JSONable
         return sample_n
+
+    def __eq__(self, other: Space) -> bool:
+        return type(other) is Space and self._shape == other._shape and self.dtype == other.dtype

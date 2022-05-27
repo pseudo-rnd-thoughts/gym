@@ -66,7 +66,7 @@ class MultiBinary(Space[np.ndarray]):
             x = np.array(x)  # Promote list to array for contains check
         if self.shape != x.shape:
             return False
-        return ((x == 0) | (x == 1)).all()
+        return np.all((x == 0) | (x == 1))
 
     def to_jsonable(self, sample_n) -> list:
         """Convert a batch of samples from this space to a JSONable data type."""

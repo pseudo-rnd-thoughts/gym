@@ -63,8 +63,8 @@ class Discrete(Space[int]):
     def __repr__(self) -> str:
         """Gives a string representation of this space."""
         if self.start != 0:
-            return "Discrete(%d, start=%d)" % (self.n, self.start)
-        return "Discrete(%d)" % self.n
+            return f"Discrete({self.n:d}, start={self.start:d})"
+        return f"Discrete({self.n:d})"
 
     def __eq__(self, other) -> bool:
         """Check whether ``other`` is equivalent to this instance."""
