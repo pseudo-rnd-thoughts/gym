@@ -9,15 +9,13 @@ from gym.dev_wrappers.lambda_observations import (
     flatten_observations_v0,
     grayscale_observations_v0,
     lambda_observations_v0,
-    normalize_observations_v0,
-    observation_dtype_v0,
-    reshape_observation_v0,
+    observations_dtype_v0,
+    reshape_observations_v0,
     resize_observations_v0,
 )
 from gym.dev_wrappers.lambda_reward import (
     clip_rewards_v0,
     lambda_reward_v0,
-    normalize_rewards_v0,
 )
 from gym.wrappers.atari_preprocessing import AtariPreprocessing
 from gym.wrappers.autoreset import AutoResetWrapper

@@ -10,18 +10,22 @@ from gym.wrappers import (
     flatten_observations_v0,
     grayscale_observations_v0,
     lambda_observations_v0,
-    normalize_observations_v0,
-    observation_dtype_v0,
-    reshape_observation_v0,
+    observations_dtype_v0,
+    reshape_observations_v0,
     resize_observations_v0,
 )
 from tests.dev_wrappers.utils import contains_space, TestingEnv
 
+NUM_ENVS = 3
 ENVS = [
     gym.make('CartPole-v1'),    # Box(np.zeros(4), np.ones(4), (4,), float32)
     gym.make('CarRacing-v1'),   # Box(0, 255, (96, 96, 3), uint8)
     gym.make('FrozenLake-v1'),  # Discrete(16)
     gym.make('Blackjack-v1'),   # Tuple(Discrete(32), Discrete(11), Discrete(2))
+    gym.vector.make('CartPole-v1', num_envs=NUM_ENVS),
+    gym.vector.make('CarRacing-v1', num_envs=NUM_ENVS),
+    gym.vector.make('FrozenLake-v1', num_envs=NUM_ENVS),
+    gym.vector.make('Blackjack-v1', num_envs=NUM_ENVS),
     TestingEnv(observation_space=MultiDiscrete([5, 3])),
     TestingEnv(observation_space=MultiBinary(10)),
     TestingEnv(observation_space=MultiBinary([3, 4])),
@@ -46,10 +50,11 @@ def test_lambda_observations_v0(env, func, args, updated_obs_shape):
     wrapped_env.reset(seed=SEED)
     for _ in range(NUM_STEPS):
         action = wrapped_env.action_space.sample()
-        wrapped_env.step(action)
+        obs, *res = wrapped_env.step(action)
+        assert obs in wrapped_env.observation_space
 
 
-@pytest.mark.parametrize("env", COMPOSITE_ENVS)
+@pytest.mark.parametrize("env", COMPOSITE_ENVS, ids=[])
 @pytest.mark.parametrize("args", [
 
 ])
@@ -62,7 +67,8 @@ def test_filter_observations_v0(env, args, updated_obs_shape):
     wrapped_env.reset(seed=SEED)
     for _ in range(NUM_STEPS):
         action = wrapped_env.action_space.sample()
-        wrapped_env.step(action)
+        obs, *res = wrapped_env.step(action)
+        assert obs in wrapped_env.observation_space
 
 
 @pytest.mark.parametrize("env", ENVS)
@@ -78,7 +84,8 @@ def test_flatten_observations_v0(env, args, updated_obs_shape):
     wrapped_env.reset(seed=SEED)
     for _ in range(NUM_STEPS):
         action = wrapped_env.action_space.sample()
-        wrapped_env.step(action)
+        obs, *res = wrapped_env.step(action)
+        assert obs in wrapped_env.observation_space
 
 
 @pytest.mark.parametrize("env", IMAGE_ENVS)
@@ -94,20 +101,8 @@ def test_grayscale_observations_v0(env, args, updated_obs_shape):
     wrapped_env.reset(seed=SEED)
     for _ in range(NUM_STEPS):
         action = wrapped_env.action_space.sample()
-        wrapped_env.step(action)
-
-
-@pytest.mark.parametrize("env", ENVS)
-@pytest.mark.parametrize("args", [
-
-])
-def test_normalize_observations_v0(env, args):
-    wrapped_env = normalize_observations_v0(env, args)
-
-    wrapped_env.reset(seed=SEED)
-    for _ in range(NUM_STEPS):
-        action = wrapped_env.action_space.sample()
-        wrapped_env.step(action)
+        obs, *res = wrapped_env.step(action)
+        assert obs in wrapped_env.observation_space
 
 
 @pytest.mark.parametrize("env", IMAGE_ENVS)
@@ -123,7 +118,8 @@ def test_resize_observations_v0(env, args, updated_obs_shape):
     wrapped_env.reset(seed=SEED)
     for _ in range(NUM_STEPS):
         action = wrapped_env.action_space.sample()
-        wrapped_env.step(action)
+        obs, *res = wrapped_env.step(action)
+        assert obs in wrapped_env.observation_space
 
 
 @pytest.mark.parametrize("env", ENVS)
@@ -134,12 +130,13 @@ def test_resize_observations_v0(env, args, updated_obs_shape):
 
 ])
 def test_observation_dtype_v0(env, args, updated_obs_shape):
-    wrapped_env = observation_dtype_v0(env, args, updated_obs_shape)
+    wrapped_env = observations_dtype_v0(env, args, updated_obs_shape)
 
     wrapped_env.reset(seed=SEED)
     for _ in range(NUM_STEPS):
         action = wrapped_env.action_space.sample()
-        wrapped_env.step(action)
+        obs, *res = wrapped_env.step(action)
+        assert obs in wrapped_env.observation_space
 
 
 @pytest.mark.parametrize("env", ENVS)
@@ -150,10 +147,11 @@ def test_observation_dtype_v0(env, args, updated_obs_shape):
 
 ])
 def test_reshape_observation_v0(env, args, updated_obs_shape):
-    wrapped_env = reshape_observation_v0(env, args, updated_obs_shape)
+    wrapped_env = reshape_observations_v0(env, args, updated_obs_shape)
 
     wrapped_env.reset(seed=SEED)
     for _ in range(NUM_STEPS):
         action = wrapped_env.action_space.sample()
-        wrapped_env.step(action)
+        obs, *res = wrapped_env.step(action)
+        assert obs in wrapped_env.observation_space
 

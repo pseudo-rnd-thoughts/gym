@@ -2,9 +2,10 @@
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import Generic, Optional, SupportsFloat, TypeVar, Union
+from typing import Generic, Optional, SupportsFloat, TypeVar, Union, Any, Dict, Tuple
 
 from gym import spaces
+from gym.envs.registration import EnvSpec
 from gym.logger import deprecation
 from gym.utils import seeding
 from gym.utils.seeding import RandomNumberGenerator
@@ -41,9 +42,9 @@ class Env(Generic[ObsType, ActType]):
     """
 
     # Set this in SOME subclasses
-    metadata = {"render_modes": []}
-    reward_range = (-float("inf"), float("inf"))
-    spec = None
+    metadata: Dict[str, Any] = {"render_modes": []}
+    reward_range: Tuple[float, float] = (-float("inf"), float("inf"))
+    spec: EnvSpec = None
 
     # Set these in ALL subclasses
     action_space: spaces.Space[ActType]

@@ -1,5 +1,7 @@
 from typing import Optional, Union
 
+import numpy as np
+
 import gym
 from gym import Space
 from gym.core import ActType, ObsType
@@ -13,9 +15,9 @@ class TestingEnv(gym.Env):
     """
     def __init__(
         self,
-        observation_space: Space = Box(-10, 10, ()),
-        action_space: Space = Discrete(5),
-        reward_space: Space = Discrete(10),
+        observation_space: Space = None,
+        action_space: Space = None,
+        reward_range: Tuple[float, float] = None,
         env_length: Optional[int] = None,
     ):
         """Constructor of the testing environment
@@ -23,12 +25,28 @@ class TestingEnv(gym.Env):
         Args:
             observation_space: The environment observation shape
             action_space: The environment action space
-            reward_space: The reward space for the environment to sample from
+            reward_range: The reward range for the environment to sample from
             env_length: The environment length used to know if the environment has timed out
         """
-        self.observation_space = observation_space
-        self.action_space = action_space
-        self.reward_space = reward_space
+        self.name = ""
+        if observation_space is None:
+            self.observation_space = Box(-10, 10, ())
+        else:
+            self.observation_space = observation_space
+            self.name += str(observation_space)
+
+        if action_space is None:
+            self.action_space = Discrete(5)
+        else:
+            self.action_space = action_space
+            self.name += str(action_space)
+
+        if reward_range is None:
+            self.reward_range = (0, 0)
+        else:
+            self.reward_range = reward_range
+            self.name += str(reward_range)
+
         self.env_length = env_length
         self.steps_left = env_length
 
@@ -48,13 +66,13 @@ class TestingEnv(gym.Env):
 
         return (
             self.observation_space.sample(),
-            self.reward_space.sample(),
+            np.random.randint(self.reward_range[0], self.reward_range[1]),
             self.env_length is not None and self.steps_left == 0,
             {}
         )
 
-    def id(self):
-        pass
+    def __str__(self):
+        return self.name
 
 
 def contains_space(space: Space, contain_type: type) -> bool:
