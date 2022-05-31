@@ -39,7 +39,7 @@ class lambda_observations_v0(gym.ObservationWrapper):
         env: gym.Env,
         func: Callable[[ObsType, ArgType], ObsType],
         args: FuncArgType[Any],
-        observation_space: Optional[spaces.Space] = None,
+        observation_space: spaces.Space,
     ):
         """Constructor for the lambda observation wrapper
 
@@ -52,9 +52,7 @@ class lambda_observations_v0(gym.ObservationWrapper):
         super().__init__(env)
         self.func = func
         self.args = args
-
-        if observation_space:
-            self.observation_space = observation_space
+        self.observation_space = observation_space
 
     def observation(self, observation: ObsType):
         return apply_function(self.observation_space, observation, self.func, self.args)
@@ -165,7 +163,7 @@ class flatten_observations_v0(lambda_observations_v0):
 
         super().__init__(
             env,
-            lambda obs, arg: obs if arg is False else flatten(space, obs),  # TODO work out how to do this
+            lambda obs, space: obs if space is None else flatten(space, obs),
             args,
             flatten_obs_space,
         )
