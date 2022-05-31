@@ -58,11 +58,8 @@ def test_lambda_observations_v0(env, func, args, updated_obs_shape):
 @pytest.mark.parametrize("args", [
 
 ])
-@pytest.mark.parametrize("updated_obs_shape", [
-
-])
-def test_filter_observations_v0(env, args, updated_obs_shape):
-    wrapped_env = filter_observations_v0(env, args, updated_obs_shape)
+def test_filter_observations_v0(env, args):
+    wrapped_env = filter_observations_v0(env, args)
 
     wrapped_env.reset(seed=SEED)
     for _ in range(NUM_STEPS):
@@ -75,11 +72,8 @@ def test_filter_observations_v0(env, args, updated_obs_shape):
 @pytest.mark.parametrize("args", [
 
 ])
-@pytest.mark.parametrize("updated_obs_shape", [
-
-])
-def test_flatten_observations_v0(env, args, updated_obs_shape):
-    wrapped_env = flatten_observations_v0(env, args, updated_obs_shape)
+def test_flatten_observations_v0(env, args):
+    wrapped_env = flatten_observations_v0(env, args)
 
     wrapped_env.reset(seed=SEED)
     for _ in range(NUM_STEPS):
@@ -92,11 +86,8 @@ def test_flatten_observations_v0(env, args, updated_obs_shape):
 @pytest.mark.parametrize("args", [
 
 ])
-@pytest.mark.parametrize("updated_obs_shape", [
-
-])
-def test_grayscale_observations_v0(env, args, updated_obs_shape):
-    wrapped_env = grayscale_observations_v0(env, args, updated_obs_shape)
+def test_grayscale_observations_v0(env, args):
+    wrapped_env = grayscale_observations_v0(env, args)
 
     wrapped_env.reset(seed=SEED)
     for _ in range(NUM_STEPS):
@@ -109,11 +100,8 @@ def test_grayscale_observations_v0(env, args, updated_obs_shape):
 @pytest.mark.parametrize("args", [
 
 ])
-@pytest.mark.parametrize("updated_obs_shape", [
-
-])
-def test_resize_observations_v0(env, args, updated_obs_shape):
-    wrapped_env = resize_observations_v0(env, args, updated_obs_shape)
+def test_resize_observations_v0(env, args):
+    wrapped_env = resize_observations_v0(env, args)
 
     wrapped_env.reset(seed=SEED)
     for _ in range(NUM_STEPS):
@@ -126,11 +114,8 @@ def test_resize_observations_v0(env, args, updated_obs_shape):
 @pytest.mark.parametrize("args", [
 
 ])
-@pytest.mark.parametrize("updated_obs_shape", [
-
-])
-def test_observation_dtype_v0(env, args, updated_obs_shape):
-    wrapped_env = observations_dtype_v0(env, args, updated_obs_shape)
+def test_observation_dtype_v0(env, args):
+    wrapped_env = observations_dtype_v0(env, args)
 
     wrapped_env.reset(seed=SEED)
     for _ in range(NUM_STEPS):
@@ -143,11 +128,8 @@ def test_observation_dtype_v0(env, args, updated_obs_shape):
 @pytest.mark.parametrize("args", [
 
 ])
-@pytest.mark.parametrize("updated_obs_shape", [
-
-])
-def test_reshape_observation_v0(env, args, updated_obs_shape):
-    wrapped_env = reshape_observations_v0(env, args, updated_obs_shape)
+def test_reshape_observation_v0(env, args):
+    wrapped_env = reshape_observations_v0(env, args)
 
     wrapped_env.reset(seed=SEED)
     for _ in range(NUM_STEPS):
