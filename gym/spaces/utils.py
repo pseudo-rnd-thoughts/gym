@@ -265,20 +265,37 @@ def apply_function(space: Space, x, func: Callable, args: FuncArgType[Any]) -> A
 @apply_function.register(Discrete)
 @apply_function.register(MultiDiscrete)
 @apply_function.register(MultiBinary)
-def _apply_function_fundamental(_, x: Any, func: Callable, args: Optional[Any]):
+def _apply_function_fundamental(_, x: Any, func: Callable, *args: Optional[Any]):
     return func(x, *args)
 
 
 @apply_function.register(Dict)
 def _apply_function_dict(space: Dict, x: Any, func: Callable, args: Optional[Any]):
+    def apply_function_dict_recursive(ordered_dict, space, x, k, func, args):
+        """Recursive function for applying function to nested `Dict` spaces."""
+        if k not in args:
+            ordered_dict[k] = x.get(k)
+            return ordered_dict
+
+        space, args, x = space[k], args[k], x[k]
+
+        if type(space) == Dict:
+            for k in space.keys():
+                ordered_dict[k] = apply_function_dict_recursive(ordered_dict, space, x, k, func, args)
+        else:
+            ordered_dict[k] = apply_function(space, x, func, args)
+        return ordered_dict
+    
     if args is None:
         return OrderedDict([(space_key, apply_function(subspace, x[space_key], func, None))
                             for space_key, subspace in space.spaces.items()])
+    
     elif isinstance(args, dict):
-        return OrderedDict([
-            (key, apply_function(space[key], x[key], func, args[key]) if key in args else x[key])
-            for key in space.spaces.items()
-        ])
+        ordered_dict = OrderedDict()
+        for k in space.keys():
+            apply_function_dict_recursive(ordered_dict, space, x, k, func, args)
+        return ordered_dict
+    
     else:
         raise Exception  # TODO, maybe unsure
 

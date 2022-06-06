@@ -1,4 +1,5 @@
 from typing import Optional, Union
+from typing import Tuple as TypingTuple # TODO: collision with Tuple space
 
 import numpy as np
 
@@ -17,7 +18,7 @@ class TestingEnv(gym.Env):
         self,
         observation_space: Space = None,
         action_space: Space = None,
-        reward_range: Tuple[float, float] = None,
+        reward_range: TypingTuple[float, float] = None,
         env_length: Optional[int] = None,
     ):
         """Constructor of the testing environment
@@ -42,7 +43,7 @@ class TestingEnv(gym.Env):
             self.name += str(action_space)
 
         if reward_range is None:
-            self.reward_range = (0, 0)
+            self.reward_range = (0, 1)
         else:
             self.reward_range = reward_range
             self.name += str(reward_range)
@@ -59,7 +60,7 @@ class TestingEnv(gym.Env):
         else:
             return self.observation_space.sample()
 
-    def step(self, action: ActType) -> tuple[ObsType, float, bool, dict]:
+    def step(self, action: ActType) -> TypingTuple[ObsType, float, bool, dict]:
         """"TODO"""
         if self.env_length is not None:
             self.steps_left -= 1
@@ -68,7 +69,7 @@ class TestingEnv(gym.Env):
             self.observation_space.sample(),
             np.random.randint(self.reward_range[0], self.reward_range[1]),
             self.env_length is not None and self.steps_left == 0,
-            {}
+            {"action": action}
         )
 
     def __str__(self):
