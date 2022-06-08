@@ -7,7 +7,7 @@ from __future__ import annotations
 import operator as op
 from collections import OrderedDict
 from functools import reduce, singledispatch
-from typing import TypeVar, Union, cast, Callable, Optional, Any, Sequence
+from typing import Any, Callable, Optional, Sequence, TypeVar, Union, cast
 
 import numpy as np
 
@@ -106,7 +106,9 @@ def _flatten_tuple(space, x) -> np.ndarray:
 
 @flatten.register(Dict)
 def _flatten_dict(space, x) -> np.ndarray:
-    return np.concatenate([flatten(s, x[key]) for key, s in space.spaces.items()])  # TODO, why do we not return a dictionary here?
+    return np.concatenate(
+        [flatten(s, x[key]) for key, s in space.spaces.items()]
+    )  # TODO, why do we not return a dictionary here?
 
 
 @singledispatch
@@ -271,31 +273,42 @@ def _apply_function_fundamental(_, x: Any, func: Callable, *args: Optional[Any])
 
 @apply_function.register(Dict)
 def _apply_function_dict(space: Dict, x: Any, func: Callable, args: Optional[Any]):
-    def apply_function_dict_recursive(ordered_dict, space, x, k, func, args):
-        """Recursive function for applying function to nested `Dict` spaces."""
-        if k not in args:
-            ordered_dict[k] = x.get(k)
-            return ordered_dict
+    def _apply_function_dict_helper(
+        updated_x: Any, space: Space, x: Any, space_key: str, func: Callable, args: Dict
+    ):
+        if space_key not in args:
+            updated_x[space_key] = x.get(space_key)
+            return updated_x
 
-        space, args, x = space[k], args[k], x[k]
+        space = space[space_key]
+        args = args[space_key]
+        x = x[space_key]
 
-        if type(space) == Dict:
-            for k in space.keys():
-                ordered_dict[k] = apply_function_dict_recursive(ordered_dict, space, x, k, func, args)
+        if type(space) != Dict:
+            updated_x[space_key] = apply_function(space, x, func, args)
         else:
-            ordered_dict[k] = apply_function(space, x, func, args)
-        return ordered_dict
-    
+            updated_x[space_key] = OrderedDict()
+            for nested_space_key in space:
+                _apply_function_dict_helper(
+                    updated_x[space_key], space, x, nested_space_key, func, args
+                )
+
+        return updated_x
+
     if args is None:
-        return OrderedDict([(space_key, apply_function(subspace, x[space_key], func, None))
-                            for space_key, subspace in space.spaces.items()])
-    
+        return OrderedDict(
+            [
+                (space_key, apply_function(subspace, x[space_key], func, None))
+                for space_key, subspace in space.spaces.items()
+            ]
+        )
+
     elif isinstance(args, dict):
-        ordered_dict = OrderedDict()
-        for k in space.keys():
-            apply_function_dict_recursive(ordered_dict, space, x, k, func, args)
-        return ordered_dict
-    
+        updated_x = OrderedDict()
+        for k in space:
+            updated_x = _apply_function_dict_helper(updated_x, space, x, k, func, args)
+        return updated_x
+
     else:
         raise Exception  # TODO, maybe unsure
 
@@ -303,10 +316,17 @@ def _apply_function_dict(space: Dict, x: Any, func: Callable, args: Optional[Any
 @apply_function.register(Tuple)
 def _apply_function_tuple(space: Tuple, x: Any, func: Callable, args: Optional[Any]):
     if args is None:
-        return tuple(apply_function(subspace, val, func, None) for subspace, val in zip(space.spaces, x))
+        return tuple(
+            apply_function(subspace, val, func, None)
+            for subspace, val in zip(space.spaces, x)
+        )
     elif isinstance(args, Sequence):
-        assert len(args) == len(space)  # TODO, not sure if we can deal with less args than
-        return tuple(apply_function(subspace, val, func, arg)
-                     for subspace, val, arg in zip(space.spaces, x, args))
+        assert len(args) == len(
+            space
+        )  # TODO, not sure if we can deal with less args than
+        return tuple(
+            apply_function(subspace, val, func, arg)
+            for subspace, val, arg in zip(space.spaces, x, args)
+        )
     else:
         raise Exception  # TODO

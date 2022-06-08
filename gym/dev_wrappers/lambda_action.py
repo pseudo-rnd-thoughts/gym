@@ -8,6 +8,7 @@ import jumpy as jp
 import gym
 from gym import Space
 from gym.dev_wrappers import FuncArgType
+from gym.dev_wrappers.utils import extend_args
 from gym.spaces import Box, Dict, Tuple, apply_function
 
 
@@ -177,5 +178,30 @@ class scale_actions_v0(lambda_action_v0):
             env: The environment to wrap
             args: The arguments for scaling the actions
         """
-        action_space = None  # TODO, add action space
-        super().__init__(env, lambda action, arg: action * arg, args, action_space)
+        if type(env.action_space) == Box:
+            action_space = Box(*args, shape=env.action_space.shape)
+            args = (*args, env.action_space.low, env.action_space.high)
+
+        elif type(env.action_space) == Dict:
+            assert isinstance(args, dict)
+            action_space = self._transform_dict_space(env, args)
+            extended_args = {}
+            for arg in args:
+                extend_args(env.action_space, extended_args, args, arg)
+            args = extended_args
+
+        else:
+            action_space = env.action_space
+
+        def func(action, args):
+            new_low, new_high = args[0], args[1]
+            old_low, old_high = args[2], args[3]
+
+            return jp.clip(
+                old_low
+                + (old_high - old_low) * ((action - new_low) / (new_high - new_low)),
+                old_low,
+                old_high,
+            )
+
+        super().__init__(env, func, args, action_space)
