@@ -6,7 +6,7 @@ import gym
 from gym.dev_wrappers.lambda_action import scale_actions_v0
 from gym.spaces import Box, Dict, Discrete, MultiBinary, MultiDiscrete, Tuple
 from gym.wrappers import clip_actions_v0, lambda_action_v0  # scale_actions_v0
-from tests.dev_wrappers.utils import TestingEnv, contains_space
+from tests.dev_wrappers.utils import TestingEnv
 
 ENVS = (
     gym.make("CartPole-v1", disable_env_checker=True),  # action_shape=Discrete(2)
@@ -62,6 +62,23 @@ TESTING_NESTED_DICT_ACTION_SPACE = Dict(
     discrete=Discrete(DISCRETE_VALUE),
     box=Box(BOX_LOW, BOX_HIGH, (BOX_DIM,)),
     dict=Dict(nested=Box(NESTED_BOX_LOW, NESTED_BOX_HIGH, (BOX_DIM,))),
+)
+
+TESTING_TUPLE_ACTION_SPACE = Tuple(
+    [Discrete(DISCRETE_VALUE), Box(BOX_LOW, BOX_HIGH, (BOX_DIM,))]
+)
+
+TESTING_NESTED_TUPLE_ACTION_SPACE = Tuple(
+    [
+        Discrete(DISCRETE_VALUE),
+        Box(BOX_LOW, BOX_HIGH, (BOX_DIM,)),
+        Tuple(
+            [
+                Discrete(DISCRETE_VALUE),
+                Box(BOX_LOW, BOX_HIGH, (BOX_DIM,)),
+            ]
+        ),
+    ]
 )
 
 
@@ -221,6 +238,29 @@ def test_clip_actions_v0_nested_dict(env, args, action):
 
     assert executed_actions["box"] == NEW_BOX_HIGH
     assert executed_actions["dict"]["nested"] == NEW_NESTED_BOX_HIGH
+
+
+@pytest.mark.parametrize(
+    ("env", "args", "action"),
+    [
+        (
+            TestingEnv(action_space=TESTING_TUPLE_ACTION_SPACE),
+            [None, (NEW_BOX_LOW, NEW_BOX_HIGH)],
+            [0, NEW_BOX_HIGH + 1],
+        )
+    ],
+)
+def test_clip_actions_v0_tuple_testing_env(env, args, action):
+    """Checks Tuple action spaces clipping.
+
+    Check whether tuples action spaces are
+    correctly clipped.
+    """
+    wrapped_env = clip_actions_v0(env, args)
+    _, _, _, info = wrapped_env.step(action)
+    executed_actions = info["action"]
+
+    assert np.alltrue(executed_actions == (0, NEW_BOX_HIGH))
 
 
 def test_scale_actions_v0_box():

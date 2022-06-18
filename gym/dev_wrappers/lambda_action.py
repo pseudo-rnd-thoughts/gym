@@ -8,7 +8,7 @@ import jumpy as jp
 import gym
 from gym import Space
 from gym.dev_wrappers import FuncArgType
-from gym.dev_wrappers.utils import extend_args
+from gym.dev_wrappers.utils import extend_args, transform_space
 from gym.spaces import Box, Dict, Tuple, apply_function
 
 
@@ -65,41 +65,9 @@ class lambda_action_v0(gym.ActionWrapper):
         """Apply function to action."""
         return apply_function(self.action_space, action, self.func, self.func_args)
 
-    def _transform_dict_space(
-        self, env: gym.Env, args: FuncArgType[TypingTuple[int, int]]
-    ):
+    def _transform_space(self, env: gym.Env, args: FuncArgType[TypingTuple[int, int]]):
         """Process the `Dict` space and apply the transformation."""
-        action_space = Dict()
-
-        for k in env.action_space.keys():
-            self._transform_dict_space_helper(env.action_space, action_space, k, args)
-        return action_space
-
-    def _transform_dict_space_helper(
-        self,
-        env_space: gym.Space,
-        space: gym.Space,
-        space_key: str,
-        args: FuncArgType[TypingTuple[int, int]],
-    ):
-        """Recursive function to process possibly nested `Dict` spaces."""
-        if space_key not in args:
-            space[space_key] = env_space[space_key]
-            return space
-
-        args = args[space_key]
-        env_space = env_space[space_key]
-
-        if isinstance(env_space, Box):
-            space[space_key] = Box(*args, shape=env_space.shape)
-
-        elif isinstance(env_space, Dict):
-            space[space_key] = Dict()
-            for m in env_space.keys():
-                space[space_key] = self._transform_dict_space_helper(
-                    env_space, space[space_key], m, args
-                )
-        return space
+        return transform_space(env.action_space, env, args)
 
 
 class clip_actions_v0(lambda_action_v0):
@@ -139,13 +107,7 @@ class clip_actions_v0(lambda_action_v0):
             env: The environment to wrap
             args: The arguments for clipping the action space
         """
-        if type(env.action_space) == Box:
-            action_space = Box(*args, shape=env.action_space.shape)
-        elif type(env.action_space) == Dict:
-            assert isinstance(args, dict)
-            action_space = self._transform_dict_space(env, args)
-        else:
-            action_space = None
+        action_space = self._transform_space(env, args)
 
         super().__init__(
             env, lambda action, args: jp.clip(action, *args), args, action_space
@@ -178,20 +140,16 @@ class scale_actions_v0(lambda_action_v0):
             env: The environment to wrap
             args: The arguments for scaling the actions
         """
+        action_space = self._transform_space(env, args)
+
         if type(env.action_space) == Box:
-            action_space = Box(*args, shape=env.action_space.shape)
             args = (*args, env.action_space.low, env.action_space.high)
 
         elif type(env.action_space) == Dict:
-            assert isinstance(args, dict)
-            action_space = self._transform_dict_space(env, args)
             extended_args = {}
             for arg in args:
                 extend_args(env.action_space, extended_args, args, arg)
             args = extended_args
-
-        else:
-            action_space = env.action_space
 
         def func(action, args):
             new_low, new_high = args[0], args[1]
