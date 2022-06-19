@@ -1,13 +1,12 @@
 """A set of utility functions for lambda wrappers."""
 from copy import deepcopy
 from functools import singledispatch
-from typing import Any, Callable, Optional, Sequence
+from typing import Any, Sequence
 from typing import Tuple as TypingTuple
 
 import gym
-from gym import Space
 from gym.dev_wrappers import FuncArgType
-from gym.spaces import Box, Dict, Discrete, MultiBinary, MultiDiscrete, Space, Tuple
+from gym.spaces import Box, Dict, Discrete, Space, Tuple
 
 
 def extend_args(action_space: Space, extended_args: dict, args: dict, space_key: str):
@@ -144,13 +143,45 @@ def _transform_nestable_tuple_space(
 ):
     """Recursive function to process possibly nested `Tuple` spaces."""
     updated_space[idx_to_update] = [s for s in original_space]
-    updated_space = updated_space[idx_to_update]
 
     if args is None:
         return
 
     for i, arg in enumerate(args):
         if is_nestable(original_space[i]):
-            transform_nestable_space(original_space[i], updated_space, i, args[i], env)
+            transform_nestable_space(
+                original_space[i], updated_space[idx_to_update], i, args[i], env
+            )
         else:
-            updated_space[i] = transform_space(original_space[i], env, arg)
+            updated_space[idx_to_update][i] = transform_space(
+                original_space[i], env, arg
+            )
+
+    if isinstance(updated_space[idx_to_update], list):
+        updated_space[idx_to_update] = Tuple(updated_space[idx_to_update])
+
+
+if __name__ == "__main__":
+    import gym
+    from gym.dev_wrappers.lambda_action import clip_actions_v0
+    from gym.spaces import Box, Dict, Discrete, Tuple
+    from tests.dev_wrappers.utils import TestingEnv
+
+    env = TestingEnv(
+        action_space=Tuple(
+            [
+                Tuple(
+                    [
+                        Box(-6, 6, (1,)),
+                        Tuple(
+                            [
+                                Box(-6, 6, (1,)),
+                            ]
+                        ),
+                    ]
+                )
+            ]
+        )
+    )
+    wrapped_env = clip_actions_v0(env, [[None, [(-3, 3)]]])
+    print(wrapped_env.action_space)
