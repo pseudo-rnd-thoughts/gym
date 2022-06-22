@@ -96,11 +96,11 @@ def _transform_space_dict(
     assert isinstance(args, dict)
     updated_space = deepcopy(env.action_space)
 
-    for k in args:
-        if is_nestable(space[k]):
-            transform_nestable_space(space[k], updated_space, k, args[k], env)
+    for arg in args:
+        if is_nestable(space[arg]):
+            transform_nestable_space(space[arg], updated_space, arg, args[arg], env)
         else:
-            updated_space[k] = transform_space(space[k], env, args.get(k))
+            updated_space[arg] = transform_space(space[arg], env, args.get(arg))
     return updated_space
 
 
@@ -119,18 +119,22 @@ def transform_nestable_space(
 def _transform_nestable_dict_space(
     original_space: gym.Space,
     updated_space: gym.Space,
-    key_to_update: str,
+    arg: str,
     args: FuncArgType[TypingTuple[int, int]],
     env,
 ):
     """Recursive function to process possibly nested `Dict` spaces."""
-    updated_space = updated_space[key_to_update]
+    updated_space = updated_space[arg]
 
-    for k in args:
-        if is_nestable(original_space[k]):
-            transform_nestable_space(original_space[k], updated_space, k, args[k], env)
+    for arg in args:
+        if is_nestable(original_space[arg]):
+            transform_nestable_space(
+                original_space[arg], updated_space, arg, args[arg], env
+            )
         else:
-            updated_space[k] = transform_space(original_space[k], env, args.get(k))
+            updated_space[arg] = transform_space(
+                original_space[arg], env, args.get(arg)
+            )
 
 
 @transform_nestable_space.register(Tuple)
@@ -159,29 +163,3 @@ def _transform_nestable_tuple_space(
 
     if isinstance(updated_space[idx_to_update], list):
         updated_space[idx_to_update] = Tuple(updated_space[idx_to_update])
-
-
-if __name__ == "__main__":
-    import gym
-    from gym.dev_wrappers.lambda_action import clip_actions_v0
-    from gym.spaces import Box, Dict, Discrete, Tuple
-    from tests.dev_wrappers.utils import TestingEnv
-
-    env = TestingEnv(
-        action_space=Tuple(
-            [
-                Tuple(
-                    [
-                        Box(-6, 6, (1,)),
-                        Tuple(
-                            [
-                                Box(-6, 6, (1,)),
-                            ]
-                        ),
-                    ]
-                )
-            ]
-        )
-    )
-    wrapped_env = clip_actions_v0(env, [[None, [(-3, 3)]]])
-    print(wrapped_env.action_space)
