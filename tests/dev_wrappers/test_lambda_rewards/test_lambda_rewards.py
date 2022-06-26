@@ -1,7 +1,6 @@
 """Test lambda reward wrapper."""
-import pytest
-
 import numpy as np
+import pytest
 
 import gym
 from gym.wrappers import clip_rewards_v0, lambda_reward_v0

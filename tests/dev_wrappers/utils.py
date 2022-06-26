@@ -1,12 +1,13 @@
-from typing import Optional, Union
+from typing import Optional
 from typing import Tuple as TypingTuple
+from typing import Union
 
 import numpy as np
 
 import gym
 from gym import Space
 from gym.core import ActType, ObsType
-from gym.spaces import Box, Discrete, Dict, Tuple
+from gym.spaces import Box, Dict, Discrete, Tuple
 
 
 class TestingEnv(gym.Env):
@@ -14,11 +15,12 @@ class TestingEnv(gym.Env):
 
     The action and observation spaces provided are used to sample new observations or actions to test with the environment
     """
+
     def __init__(
         self,
         observation_space: Space = None,
         action_space: Space = None,
-        reward_range = None,
+        reward_range=None,
         env_length: Optional[int] = None,
     ):
         """Constructor of the testing environment
@@ -51,8 +53,13 @@ class TestingEnv(gym.Env):
         self.env_length = env_length
         self.steps_left = env_length
 
-    def reset(self, *, seed: Optional[int] = None, return_info: bool = False,
-              options: Optional[dict] = None) -> Union[ObsType, TypingTuple[ObsType, dict]]:
+    def reset(
+        self,
+        *,
+        seed: Optional[int] = None,
+        return_info: bool = False,
+        options: Optional[dict] = None
+    ) -> Union[ObsType, TypingTuple[ObsType, dict]]:
         """TODO"""
         self.steps_left = self.env_length
         if return_info:
@@ -61,7 +68,7 @@ class TestingEnv(gym.Env):
             return self.observation_space.sample()
 
     def step(self, action: ActType) -> TypingTuple[ObsType, float, bool, dict]:
-        """"TODO"""
+        """ "TODO"""
         if self.env_length is not None:
             self.steps_left -= 1
 
@@ -69,7 +76,7 @@ class TestingEnv(gym.Env):
             self.observation_space.sample(),
             np.random.randint(self.reward_range[0], self.reward_range[1]),
             self.env_length is not None and self.steps_left == 0,
-            {"action": action}
+            {"action": action},
         )
 
     def __str__(self):
@@ -81,7 +88,9 @@ def contains_space(space: Space, contain_type: type) -> bool:
     if isinstance(space, contain_type):
         return True
     elif isinstance(space, Dict):
-        return any(contains_space(subspace, contain_type) for subspace in space.values())
+        return any(
+            contains_space(subspace, contain_type) for subspace in space.values()
+        )
     elif isinstance(space, Tuple):
         return any(contains_space(subspace, contain_type) for subspace in space.spaces)
     else:

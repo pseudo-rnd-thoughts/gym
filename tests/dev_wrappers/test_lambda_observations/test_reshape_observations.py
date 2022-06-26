@@ -1,23 +1,19 @@
-import gym
 import pytest
 
-from gym.spaces import Dict, Tuple, Box, MultiDiscrete, MultiBinary, Discrete
-from gym.wrappers import (
-    reshape_observations_v0
-
-)
-from tests.dev_wrappers.utils import contains_space, TestingEnv
+import gym
+from gym.wrappers import reshape_observations_v0
 from tests.dev_wrappers.test_lambda_observations.mock_data_observation import (
-    SEED,
-    NUM_STEPS,
     NEW_BOX_DIM,
     NEW_BOX_DIM_IMPOSSIBLE,
+    NUM_STEPS,
+    SEED,
     TESTING_BOX_OBSERVATION_SPACE,
     TESTING_DICT_OBSERVATION_SPACE,
-    TESTING_NESTED_DICT_ACTION_SPACE,
     TESTING_DOUBLY_NESTED_DICT_ACTION_SPACE,
-    TESTING_TUPLE_OBSERVATION_SPACE
+    TESTING_NESTED_DICT_ACTION_SPACE,
+    TESTING_TUPLE_OBSERVATION_SPACE,
 )
+from tests.dev_wrappers.utils import TestingEnv
 
 NUM_ENVS = 3
 # ENVS = [
@@ -41,16 +37,16 @@ NUM_ENVS = 3
 
 
 @pytest.mark.parametrize(
-    ("env", "args",),
+    (
+        "env",
+        "args",
+    ),
     [
         (
             TestingEnv(observation_space=TESTING_BOX_OBSERVATION_SPACE),
-            NEW_BOX_DIM,     
+            NEW_BOX_DIM,
         ),
-        (
-            gym.make('CarRacing-v1'), # Box(0, 255, (96, 96, 3), uint8)
-            (96, 48, 6)
-        )      
+        (gym.make("CarRacing-v1"), (96, 48, 6)),  # Box(0, 255, (96, 96, 3), uint8)
     ],
 )
 def test_reshape_observations_box_v0(env, args):
@@ -69,37 +65,35 @@ def test_reshape_observations_box_v0(env, args):
 def test_reshape_observations_box_impossible_v0():
     """Test wrong new shape raises ValueError.
 
-    A wrong new shape is a shape that can not be 
-    obtained from the original shape.    
+    A wrong new shape is a shape that can not be
+    obtained from the original shape.
     """
     env = TestingEnv(observation_space=TESTING_BOX_OBSERVATION_SPACE)
-    
+
     with pytest.raises(ValueError):
-        reshape_observations_v0(
-            env, 
-            NEW_BOX_DIM_IMPOSSIBLE)
+        reshape_observations_v0(env, NEW_BOX_DIM_IMPOSSIBLE)
 
 
 @pytest.mark.parametrize(
-    ("env", "args",),
+    (
+        "env",
+        "args",
+    ),
     [
         (
             TestingEnv(observation_space=TESTING_DICT_OBSERVATION_SPACE),
-            {"key_1": NEW_BOX_DIM}
+            {"key_1": NEW_BOX_DIM},
         ),
         (
             TestingEnv(observation_space=TESTING_DICT_OBSERVATION_SPACE),
-            {"key_1": NEW_BOX_DIM, "key_2": NEW_BOX_DIM}
+            {"key_1": NEW_BOX_DIM, "key_2": NEW_BOX_DIM},
         ),
-        (
-            TestingEnv(observation_space=TESTING_DICT_OBSERVATION_SPACE),
-            {}
-        )
+        (TestingEnv(observation_space=TESTING_DICT_OBSERVATION_SPACE), {}),
     ],
 )
 def test_reshape_observations_dict_v0(env, args):
     """Test reshaping `Dict` observation spaces.
-    
+
     Tests whether `Dict` observation spaces are correctly reshaped.
     Expected behaviour is that the reshape observation
     space matches the shape provided in `args`.
@@ -111,25 +105,30 @@ def test_reshape_observations_dict_v0(env, args):
         if k in args:
             assert wrapped_env.observation_space[k].shape == args[k]
         else:
-            assert wrapped_env.observation_space[k].shape == env.observation_space[k].shape
+            assert (
+                wrapped_env.observation_space[k].shape == env.observation_space[k].shape
+            )
 
 
 @pytest.mark.parametrize(
-    ("env", "args",),
+    (
+        "env",
+        "args",
+    ),
     [
         (
             TestingEnv(observation_space=TESTING_NESTED_DICT_ACTION_SPACE),
-            {"nested": {"nested": NEW_BOX_DIM}}
+            {"nested": {"nested": NEW_BOX_DIM}},
         ),
-                (
+        (
             TestingEnv(observation_space=TESTING_DOUBLY_NESTED_DICT_ACTION_SPACE),
-            {"nested": {"nested": {"nested": NEW_BOX_DIM}}}
+            {"nested": {"nested": {"nested": NEW_BOX_DIM}}},
         ),
     ],
 )
 def test_reshape_observations_nested_dict_v0(env, args):
     """Test reshaping nested `Dict` observation spaces.
-    
+
     Tests whether nested `Dict` observation spaces are correctly reshaped.
     Expected behaviour is that the reshape observation
     space matches the shape provided in `args`.
@@ -148,7 +147,7 @@ def test_reshape_observations_nested_dict_v0(env, args):
 
 def test_reshape_observations_tuple_v0():
     """Test reshaping `Tuple` observation spaces.
-    
+
     Tests whether `Tuple` observation spaces are correctly reshaped.
     Expected behaviour is that the reshape observation
     space matches the shape provided.
@@ -163,6 +162,6 @@ def test_reshape_observations_tuple_v0():
         if arg:
             assert wrapped_env.observation_space[i].shape == arg
         else:
-            assert wrapped_env.observation_space[i].shape == env.observation_space[i].shape
-
-    
+            assert (
+                wrapped_env.observation_space[i].shape == env.observation_space[i].shape
+            )

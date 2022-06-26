@@ -8,7 +8,7 @@ import jumpy as jp
 import gym
 from gym import Space
 from gym.dev_wrappers import FuncArgType
-from gym.dev_wrappers.utils.utils import extend_args
+from gym.dev_wrappers.utils.commons import extend_args
 from gym.dev_wrappers.utils.transform_space_bounds import transform_space_bounds
 from gym.spaces import Box, Dict, Tuple, apply_function
 
@@ -20,29 +20,27 @@ class lambda_action_v0(gym.ActionWrapper):
         >>> import gym
         >>> from gym.spaces import Dict
         >>> import numpy as np
-        >>> env = gym.make('CarRacing-v2')
+        >>> env = gym.make('CarRacingDiscrete-v1')
         >>> env = lambda_action_v0(env, lambda action, _: action.astype(np.int32), None)
         >>> env.action_space
-        TODO
-        >>> env.reset()
-        TODO
-        >>> env.step()[0]
-        TODO
+        Discrete(5)
+        >>> _ = env.reset()
+        >>> obs, rew, done, info = env.step(np.float64(1.2))
 
     Composite action shape:
         >>> env = ExampleEnv(action_space=Dict(left_arm=Discrete(4), right_arm=Box(0.0, 5.0, (1,)))
         >>> env = lambda_action_v0(
         ...     env,
-        ...     lambda action, _: action.astype(np.int32),
+        ...     lambda action, _: action + 10,
         ...     {"right_arm": True},
         ...     None
         ... )
         >>> env.action_space
-        TODO
-        >>> env.reset()
-        TODO
-        >>> env.step()
-        TODO
+        Dict(left_arm: Discrete(4), right_arm: Box(0.0, 5.0, (1,), float32))
+        >>> _ = env.reset()
+        >>> obs, rew, done, info = env.step({"left_arm": 1, "right_arm": 1})
+        >>> info["action"] # the executed action whitin the environment
+        {'action': OrderedDict([('left_arm', 1), ('right_arm', 11)])})
     """
 
     def __init__(
@@ -151,7 +149,7 @@ class scale_actions_v0(lambda_action_v0):
             for arg in args:
                 extend_args(env.action_space, extended_args, args, arg)
             args = extended_args
-        
+
         elif isinstance(env.action_space, Tuple):
             # TODO
             ...

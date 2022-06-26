@@ -4,14 +4,13 @@ from functools import singledispatch
 from typing import Callable, Sequence
 from typing import Tuple as TypingTuple
 
-import numpy as np
-
 import gym
 from gym.dev_wrappers import FuncArgType
-from gym.spaces import Dict, Space, Tuple
-
+from gym.dev_wrappers.utils.grayscale_space import grayscale_space
 from gym.dev_wrappers.utils.reshape_space import reshape_space
+from gym.dev_wrappers.utils.resize_spaces import resize_space
 from gym.dev_wrappers.utils.transform_space_bounds import transform_space_bounds
+from gym.spaces import Dict, Space, Tuple
 
 
 def extend_args(action_space: Space, extended_args: dict, args: dict, space_key: str):
@@ -57,7 +56,7 @@ def transform_nestable_space(
     space: gym.Space,
     space_key: str,
     args: FuncArgType[TypingTuple[int, int]],
-    fn: Callable
+    fn: Callable,
 ):
     """Transform nestable space with the provided args."""
 
@@ -79,9 +78,7 @@ def _transform_nestable_dict_space(
                 original_space[arg], updated_space, arg, args[arg], fn
             )
         else:
-            updated_space[arg] = fn(
-                original_space[arg], args.get(arg), fn
-            )
+            updated_space[arg] = fn(original_space[arg], args.get(arg), fn)
 
 
 @transform_nestable_space.register(Tuple)
@@ -104,14 +101,14 @@ def _transform_nestable_tuple_space(
                 original_space[i], updated_space[idx_to_update], i, args[i], fn
             )
         else:
-            updated_space[idx_to_update][i] = fn(
-                original_space[i], arg, fn
-            )
+            updated_space[idx_to_update][i] = fn(original_space[i], arg, fn)
 
     if isinstance(updated_space[idx_to_update], list):
         updated_space[idx_to_update] = Tuple(updated_space[idx_to_update])
 
 
+@grayscale_space.register(Tuple)
+@resize_space.register(Tuple)
 @reshape_space.register(Tuple)
 @transform_space_bounds.register(Tuple)
 def _process_space_tuple(
@@ -133,10 +130,12 @@ def _process_space_tuple(
     return Tuple(updated_space)
 
 
+@grayscale_space.register(Dict)
+@resize_space.register(Dict)
 @reshape_space.register(Dict)
 @transform_space_bounds.register(Dict)
 def _process_space_dict(
-    space: Dict, args: FuncArgType[TypingTuple[int, int]], fn
+    space: Dict, args: FuncArgType[TypingTuple[int, int]], fn: Callable
 ):
     assert isinstance(args, dict)
     updated_space = deepcopy(space)

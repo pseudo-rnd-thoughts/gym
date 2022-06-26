@@ -6,7 +6,7 @@ from typing import Tuple as TypingTuple
 import numpy as np
 
 from gym.dev_wrappers import FuncArgType
-from gym.spaces import Box, Discrete, Space, MultiBinary, MultiDiscrete
+from gym.spaces import Box, Discrete, MultiBinary, MultiDiscrete, Space
 
 
 @singledispatch
@@ -24,15 +24,19 @@ def _reshape_space_box(space, args: FuncArgType[TypingTuple[int, int]], fn: Call
     return Box(
         np.reshape(space.low, args),
         np.reshape(space.high, args),
-        shape=args)
+        shape=args,
+        dtype=space.dtype,
+    )
 
 
 @reshape_space.register(Discrete)
 @reshape_space.register(MultiBinary)
 @reshape_space.register(MultiDiscrete)
-def _reshape_space_not_reshapable(space, args: FuncArgType[TypingTuple[int, int]], fn: Callable):
+def _reshape_space_not_reshapable(
+    space, args: FuncArgType[TypingTuple[int, int]], fn: Callable
+):
     """Return original space shape for not reshable space.
-    
+
     Trying to reshape `Discrete`, `Multibinary` and `MultiDiscrete`
     spaces has no effect.
     """

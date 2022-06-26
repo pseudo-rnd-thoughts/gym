@@ -1,4 +1,4 @@
-from gym.spaces import Box, Dict, Discrete, Tuple
+from gym.spaces import Box, Dict, Tuple
 
 SEED = 1
 NUM_STEPS = 5
