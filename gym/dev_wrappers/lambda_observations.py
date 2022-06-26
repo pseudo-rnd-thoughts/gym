@@ -11,6 +11,9 @@ from gym.core import ObsType
 from gym.dev_wrappers import ArgType, FuncArgType
 from gym import spaces
 from gym.spaces.utils import apply_function, flatten, flatten_space
+from gym.dev_wrappers.utils.reshape_space import reshape_space
+from gym.dev_wrappers.utils.filter_space import filter_space
+
 
 
 class lambda_observations_v0(gym.ObservationWrapper):
@@ -21,17 +24,32 @@ class lambda_observations_v0(gym.ObservationWrapper):
         >>> from gym.spaces import Dict, Discrete
         >>> env = gym.make("CartPole-v1")
         >>> env.observation_space
-        TODO
-        >>> env = lambda_observations_v0(env, lambda obs, arg: {"obs": obs, "time": 1}, None,
-        ...                              Dict(obs=env.action_space, time=Discrete(1)))
+        Box([-4.8000002e+00 -3.4028235e+38 -4.1887903e-01 -3.4028235e+38], [4.8000002e+00 3.4028235e+38 4.1887903e-01 3.4028235e+38], (4,), float32)
+        >>> env = lambda_observations_v0(
+        ...     env, 
+        ...     lambda obs, arg: {"obs": obs, "time": 1}, 
+        ...     None,
+        ...     Dict(obs=env.action_space, time=Discrete(1))
+        ... )
         >>> env.observation_space
-        TODO
+        Dict(obs: Box([-4.8000002e+00 -3.4028235e+38 -4.1887903e-01 -3.4028235e+38], [4.8000002e+00 3.4028235e+38 4.1887903e-01 3.4028235e+38], (4,), float32), time: Discrete(1))
 
     Composite observation space:
-        >>> env = ExampleEnv(observation_space=Dict())
-        >>> env = lambda_observations_v0(env, lambda obs, arg: False, {}, None)  # todo update func and args
-        >>> env.observation_space
-        TODO
+        >>> env = ExampleEnv(
+        ...     observation_space=Dict(
+        ...         left_arm=Box(-5, 5, (1,)),
+        ...         right_arm=Box(-5, 5, (1,))
+        ...     )
+        ... )
+        >>> env = lambda_observations_v0(
+        ...     env,
+        ...     lambda obs, arg: obs * arg,
+        ...     {"left_arm": 0, "right_arm": float('inf')},
+        ...     env.observation_space
+        ... )
+        >>> obs, _, _, _ = env.step({"left_arm": 1, "right_arm": 1}))
+        >>> obs
+        OrderedDict([('left_arm', array([0.], dtype=float32)), ('right_arm', array([-inf], dtype=float32))])
     """
 
     def __init__(
@@ -39,7 +57,7 @@ class lambda_observations_v0(gym.ObservationWrapper):
         env: gym.Env,
         func: Callable[[ObsType, ArgType], ObsType],
         args: FuncArgType[Any],
-        observation_space: spaces.Space,
+        observation_space: Optional[spaces.Space] = None,
     ):
         """Constructor for the lambda observation wrapper
 
@@ -52,10 +70,17 @@ class lambda_observations_v0(gym.ObservationWrapper):
         super().__init__(env)
         self.func = func
         self.args = args
-        self.observation_space = observation_space
+        if observation_space is None:
+            self.observation_space = env.observation_space
+        else:
+            self.observation_space = observation_space
 
     def observation(self, observation: ObsType):
         return apply_function(self.observation_space, observation, self.func, self.args)
+
+    def _reshape_space(self, env: gym.Env, args: FuncArgType[TypingTuple[int, int]]):
+        """Process the space and apply the transformation."""
+        return reshape_space(env.observation_space, args, reshape_space)
 
 
 class filter_observations_v0(lambda_observations_v0):
@@ -114,11 +139,19 @@ class filter_observations_v0(lambda_observations_v0):
             env: The environment to wrap
             args: The filter arguments
         """
-        # todo modify the func args if list of strings or integers are passed in to bool type
-        observation_space = None  # todo update observation space
+        # TODO: _filter_space is actually filtering space AND processing args
+        # might need refactor
+        observation_space, args = self._filter_space(env.observation_space, args)
+        
         super().__init__(
-            env, lambda obs, arg: obs, args, observation_space  # todo update function
+            env, lambda obs, arg: obs, args, observation_space
         )
+
+    def _filter_space(
+        self, space: spaces.Space, args: FuncArgType[Union[str, int, bool]]
+    ):
+        """Filter space with the provided args."""
+        return filter_space(space, args, filter_space)
 
 
 class flatten_observations_v0(lambda_observations_v0):
@@ -206,7 +239,7 @@ class grayscale_observations_v0(lambda_observations_v0):
             env: The environment to wrap
             args: The arguments for what to convert colour to grayscale in the observation
         """
-        observation_space = None  # todo update observation space
+        observation_space = self._reshape_space(env, args)
         super().__init__(
             env,
             lambda obs, arg: obs if arg is False else jp.dot(obs[..., :3], jp.array([0.2989, 0.5870, 0.1140])),  # todo, bug in that jp.dot will always return jax.array
@@ -250,7 +283,7 @@ class resize_observations_v0(lambda_observations_v0):
             env: The environment to wrap
             args: The arguments to resize the observation
         """
-        observation_space = None  # todo, update observation space
+        observation_space = self._reshape_space(env, args)
 
         super().__init__(
             env,
@@ -295,7 +328,8 @@ class reshape_observations_v0(lambda_observations_v0):
             env: The environment to wrap
             args: The arguments to reshape the observation
         """
-        observation_space = None  # todo, update observation space
+        observation_space =  self._reshape_space(env, args)
+
         super().__init__(
             env,
             lambda obs, arg: obs if arg is None else jp.reshape(obs, arg),
@@ -304,46 +338,46 @@ class reshape_observations_v0(lambda_observations_v0):
         )
 
 
-class observations_dtype_v0(lambda_observations_v0):
-    """A wrapper that converts the observation dtype returned by :meth:`step` and :meth:`reset` to a new shape.
+# class observations_dtype_v0(lambda_observations_v0):
+#     """A wrapper that converts the observation dtype returned by :meth:`step` and :meth:`reset` to a new shape.
 
-    Basic Example:
-        >>> import gym
-        >>> from gym.spaces import Dict, Box, Discrete
-        >>> env = gym.make("CartPole-v1")
-        >>> env.observation_space
-        TODO
-        >>> env = observations_dtype_v0(env, jp.float64)
-        >>> env.observation_space
-        TODO
+#     Basic Example:
+#         >>> import gym
+#         >>> from gym.spaces import Dict, Box, Discrete
+#         >>> env = gym.make("CartPole-v1")
+#         >>> env.observation_space
+#         TODO
+#         >>> env = observations_dtype_v0(env, jp.float64)
+#         >>> env.observation_space
+#         TODO
 
-    Composite Example:
-        >>> env = ExampleEnv(observation_space=Dict())
-        >>> env = observations_dtype_v0(env, TODO)
-        >>> env.observation_space
-        TODO
+#     Composite Example:
+#         >>> env = ExampleEnv(observation_space=Dict())
+#         >>> env = observations_dtype_v0(env, TODO)
+#         >>> env.observation_space
+#         TODO
 
-        >>> env = ExampleEnv(observation_space=Tuple())
-        >>> env = observations_dtype_v0(env, TODO)
-        >>> env.observation_space
-        TODO
+#         >>> env = ExampleEnv(observation_space=Tuple())
+#         >>> env = observations_dtype_v0(env, TODO)
+#         >>> env.observation_space
+#         TODO
 
-        >>> env = ExampleEnv(observation_space=Dict(Tuple()))
-        >>> env = observations_dtype_v0(env, TODO)
-        >>> env.observation_space
-        TODO
-    """
+#         >>> env = ExampleEnv(observation_space=Dict(Tuple()))
+#         >>> env = observations_dtype_v0(env, TODO)
+#         >>> env.observation_space
+#         TODO
+#     """
 
-    def __init__(
-        self, env: gym.Env, args: FuncArgType[Union[jp.dtype, str]]
-    ):
-        """Constructor for observation dtype wrapper.
+#     def __init__(
+#         self, env: gym.Env, args: FuncArgType[Union[jp.dtype, str]]
+#     ):
+#         """Constructor for observation dtype wrapper.
 
-        Args:
-            env: The environment to wrap
-            args: The arguments for the dtype changes
-        """
-        observation_space = apply_function(env.observation_space, env.observation_space,
-                                           lambda x, arg: setattr(x, 'dtype', arg), args)
+#         Args:
+#             env: The environment to wrap
+#             args: The arguments for the dtype changes
+#         """
+#         observation_space = apply_function(env.observation_space, env.observation_space,
+#                                            lambda x, arg: setattr(x, 'dtype', arg), args)
 
-        super().__init__(env, lambda obs, arg: jp.astype(obs, arg), args, observation_space)
+#         super().__init__(env, lambda obs, arg: jp.astype(obs, arg), args, observation_space)

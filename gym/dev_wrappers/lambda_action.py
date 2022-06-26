@@ -8,7 +8,8 @@ import jumpy as jp
 import gym
 from gym import Space
 from gym.dev_wrappers import FuncArgType
-from gym.dev_wrappers.utils import extend_args, transform_space
+from gym.dev_wrappers.utils.utils import extend_args
+from gym.dev_wrappers.utils.transform_space_bounds import transform_space_bounds
 from gym.spaces import Box, Dict, Tuple, apply_function
 
 
@@ -66,8 +67,8 @@ class lambda_action_v0(gym.ActionWrapper):
         return apply_function(self.action_space, action, self.func, self.func_args)
 
     def _transform_space(self, env: gym.Env, args: FuncArgType[TypingTuple[int, int]]):
-        """Process the `Dict` space and apply the transformation."""
-        return transform_space(env.action_space, env, args)
+        """Process the space and apply the transformation."""
+        return transform_space_bounds(env.action_space, args, transform_space_bounds)
 
 
 class clip_actions_v0(lambda_action_v0):
@@ -142,14 +143,18 @@ class scale_actions_v0(lambda_action_v0):
         """
         action_space = self._transform_space(env, args)
 
-        if type(env.action_space) == Box:
+        if isinstance(env.action_space, Box):
             args = (*args, env.action_space.low, env.action_space.high)
 
-        elif type(env.action_space) == Dict:
+        elif isinstance(env.action_space, Dict):
             extended_args = {}
             for arg in args:
                 extend_args(env.action_space, extended_args, args, arg)
             args = extended_args
+        
+        elif isinstance(env.action_space, Tuple):
+            # TODO
+            ...
 
         def func(action, args):
             new_low, new_high = args[0], args[1]

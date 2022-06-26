@@ -280,11 +280,9 @@ def _apply_function_dict(space: Dict, x: Any, func: Callable, args: Optional[Any
             updated_x[space_key] = x.get(space_key)
             return updated_x
 
-        space = space[space_key]
-        args = args[space_key]
-        x = x[space_key]
+        space, args, x = space[space_key], args[space_key], x[space_key]
 
-        if type(space) != Dict:
+        if not isinstance(space, Dict):
             updated_x[space_key] = apply_function(space, x, func, args)
         else:
             updated_x[space_key] = OrderedDict()
@@ -292,13 +290,12 @@ def _apply_function_dict(space: Dict, x: Any, func: Callable, args: Optional[Any
                 _apply_function_dict_helper(
                     updated_x[space_key], space, x, nested_space_key, func, args
                 )
-
         return updated_x
 
     if args is None:
         return OrderedDict(
             [
-                (space_key, apply_function(subspace, x[space_key], func, None))
+                (space_key, apply_function(subspace, x, func, None))
                 for space_key, subspace in space.spaces.items()
             ]
         )

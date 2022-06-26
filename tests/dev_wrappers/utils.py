@@ -1,5 +1,5 @@
 from typing import Optional, Union
-from typing import Tuple as TypingTuple # TODO: collision with Tuple space
+from typing import Tuple as TypingTuple
 
 import numpy as np
 
@@ -18,7 +18,7 @@ class TestingEnv(gym.Env):
         self,
         observation_space: Space = None,
         action_space: Space = None,
-        reward_range: TypingTuple[float, float] = None,
+        reward_range = None,
         env_length: Optional[int] = None,
     ):
         """Constructor of the testing environment
@@ -52,7 +52,7 @@ class TestingEnv(gym.Env):
         self.steps_left = env_length
 
     def reset(self, *, seed: Optional[int] = None, return_info: bool = False,
-              options: Optional[dict] = None) -> Union[ObsType, tuple[ObsType, dict]]:
+              options: Optional[dict] = None) -> Union[ObsType, TypingTuple[ObsType, dict]]:
         """TODO"""
         self.steps_left = self.env_length
         if return_info:

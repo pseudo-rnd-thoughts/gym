@@ -4,7 +4,7 @@ import pytest
 
 import gym
 from gym.dev_wrappers.lambda_action import scale_actions_v0
-from tests.dev_wrappers.test_lambda_actions import (
+from tests.dev_wrappers.test_lambda_actions.mock_data_actions import (
     BOX_HIGH,
     NESTED_BOX_HIGH,
     NEW_BOX_HIGH,
