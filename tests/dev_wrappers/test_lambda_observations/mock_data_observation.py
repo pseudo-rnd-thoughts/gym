@@ -3,6 +3,7 @@ from gym.spaces import Box, Dict, Tuple
 SEED = 1
 NUM_STEPS = 5
 TESTING_ENV_SAMPLE_ACTION = 0
+NUM_ENVS = 3
 
 DISCRETE_VALUE = 1
 
@@ -17,6 +18,8 @@ TESTING_DICT_OBSERVATION_SPACE = Dict(
     key_1=Box(BOX_LOW, BOX_HIGH, BOX_DIM),
     key_2=Box(BOX_LOW, BOX_HIGH, BOX_DIM),
 )
+FLATTENEND_DICT_SIZE = 2 * (BOX_DIM[0] * BOX_DIM[1]) # key_1 flattened + key_2 flattened
+
 
 TESTING_NESTED_DICT_ACTION_SPACE = Dict(
     nested=Dict(nested=Box(BOX_LOW, BOX_HIGH, BOX_DIM))

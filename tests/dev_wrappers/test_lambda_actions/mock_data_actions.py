@@ -1,8 +1,10 @@
 from gym.spaces import Box, Dict, Discrete, Tuple
 
 SEED = 1
+NUM_ENVS = 3
 
 DISCRETE_VALUE = 1
+DISCRETE_ACTION = 0
 
 BOX_LOW, BOX_HIGH, BOX_DIM = -5, 5, 1
 NEW_BOX_LOW, NEW_BOX_HIGH = 0, 2
@@ -56,7 +58,8 @@ TESTING_DOUBLY_NESTED_TUPLE_ACTION_SPACE = Tuple(
                 Discrete(DISCRETE_VALUE),
                 Tuple(
                     [
-                        Box(BOX_LOW, BOX_HIGH, (BOX_DIM,)),
+                        Discrete(DISCRETE_VALUE),
+                        Box(NESTED_BOX_LOW, NESTED_BOX_HIGH, (BOX_DIM,)),
                     ]
                 ),
             ]

@@ -4,13 +4,15 @@ from typing import Any, Callable
 from typing import Tuple as TypingTuple
 
 import jumpy as jp
+import numpy as np
 
 import gym
 from gym import Space
 from gym.dev_wrappers import FuncArgType
-from gym.dev_wrappers.utils.commons import extend_args
+from gym.dev_wrappers.utils.extend_arguments import extend_args
 from gym.dev_wrappers.utils.transform_space_bounds import transform_space_bounds
-from gym.spaces import Box, Dict, Tuple, apply_function
+from gym.spaces import Box, Dict, Tuple
+from gym.spaces.utils import apply_function
 
 
 class lambda_action_v0(gym.ActionWrapper):
@@ -41,6 +43,13 @@ class lambda_action_v0(gym.ActionWrapper):
         >>> obs, rew, done, info = env.step({"left_arm": 1, "right_arm": 1})
         >>> info["action"] # the executed action whitin the environment
         {'action': OrderedDict([('left_arm', 1), ('right_arm', 11)])})
+
+    Vectorized environment:
+        >>> env = gym.vector.make('CarRacingDiscrete-v1', num_envs=2)
+        >>> env = lambda_action_v0(
+        ...     env, lambda action, _: action.astype(np.int32), [None for _ in range(2)]
+        ... )
+        >>> obs, rew, done, info = env.step([np.float64(1.2), np.float64(1.2)])
     """
 
     def __init__(
@@ -50,7 +59,14 @@ class lambda_action_v0(gym.ActionWrapper):
         args: FuncArgType[Any],
         action_space: Space = None,
     ):
-        """Initialize lambda_action."""
+        """Initialize lambda_action.
+        
+        Args:
+            env (Env): The gym environment
+            func (Callable): function to apply to action
+            args: function arcuments
+            action_space: wrapped environment action space
+        """
         super().__init__(env)
 
         self.func = func
@@ -82,12 +98,12 @@ class clip_actions_v0(lambda_action_v0):
         Box(-0.5, 0.5, (4,), float32)
 
     Clip with only a lower or upper bound:
-        >>> env = gym.make(TODO)
+        >>> env = gym.make('CarRacing-v1')
         >>> env.action_space
-        TODO
-        >>> env = clip_actions_v0(env, TODO)
+        Box([-1.  0.  0.], 1.0, (3,), float32)
+        >>> env = clip_actions_v0(env, (None, 0.5))
         >>> env.action_space
-        TODO
+        Box([-1.  0.  0.], 0.5, (3,), float32)
 
     Composite action space example:
         >>> env = ExampleEnv()
@@ -140,23 +156,11 @@ class scale_actions_v0(lambda_action_v0):
             args: The arguments for scaling the actions
         """
         action_space = self._transform_space(env, args)
-
-        if isinstance(env.action_space, Box):
-            args = (*args, env.action_space.low, env.action_space.high)
-
-        elif isinstance(env.action_space, Dict):
-            extended_args = {}
-            for arg in args:
-                extend_args(env.action_space, extended_args, args, arg)
-            args = extended_args
-
-        elif isinstance(env.action_space, Tuple):
-            # TODO
-            ...
+        args = self._extend_args(env, args)
 
         def func(action, args):
-            new_low, new_high = args[0], args[1]
-            old_low, old_high = args[2], args[3]
+            new_low, new_high = args[:2]
+            old_low, old_high = args[2:]
 
             return jp.clip(
                 old_low
@@ -166,3 +170,7 @@ class scale_actions_v0(lambda_action_v0):
             )
 
         super().__init__(env, func, args, action_space)
+
+
+    def _extend_args(self, env, args):
+        return extend_args(env.action_space, args, extend_args)

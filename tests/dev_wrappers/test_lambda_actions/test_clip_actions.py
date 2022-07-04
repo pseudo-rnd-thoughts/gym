@@ -3,8 +3,10 @@ import numpy as np
 import pytest
 
 import gym
+from gym.spaces import Dict
 from gym.dev_wrappers.lambda_action import clip_actions_v0
 from tests.dev_wrappers.test_lambda_actions.mock_data_actions import (
+    NUM_ENVS,
     NEW_BOX_HIGH,
     NEW_BOX_LOW,
     NEW_NESTED_BOX_HIGH,
@@ -20,6 +22,88 @@ from tests.dev_wrappers.test_lambda_actions.mock_data_actions import (
     TESTING_TUPLE_WITHIN_DICT_ACTION_SPACE,
 )
 from tests.dev_wrappers.utils import TestingEnv
+
+
+@pytest.mark.parametrize(
+    ("env_name", "args", "action_unclipped_env", "action_clipped_env"),
+    (
+        [
+            "MountainCarContinuous-v0",
+            (np.array([-0.5], dtype="float32"), np.array([0.5], dtype="float32")),
+            np.array([0.5]),
+            np.array([1]),
+        ],
+        [
+            "BipedalWalker-v3",
+            (-0.5, 0.5),
+            np.array([0.5, 0.5, 0.5, 0.5]),
+            np.array([10, 10, 10, 10]),
+        ],
+        [
+            "BipedalWalker-v3",
+            (
+                np.array([-0.5, -1, -1, -1], dtype="float32"),
+                np.array([0.5, 0.5, 1, 1], dtype="float32"),
+            ),
+            np.array([0.5, 0.5, 1, 1]),
+            np.array([10, 10, 10, 10]),
+        ],
+        [
+            "CarRacing-v1", # action space Box([-1.  0.  0.], 1.0, (3,), float32)
+            (None, 0.5),
+            np.array([0.5, 0.5, 0.5]),
+            np.array([1, 1, 1])
+        ]
+    ),
+)
+def test_clip_actions_v0(env_name, args, action_unclipped_env, action_clipped_env):
+    """Tests if actions out of bound are correctly clipped.
+
+    Tests whether out of bound actions for the wrapped
+    environments are correctly clipped.
+    """
+    env = gym.make(env_name)
+    env.reset(seed=SEED)
+    obs, _, _, _ = env.step(action_unclipped_env)
+
+    env = gym.make(env_name)
+    env.reset(seed=SEED)
+    wrapped_env = clip_actions_v0(env, args)
+    wrapped_obs, _, _, _ = wrapped_env.step(action_clipped_env)
+
+    assert np.alltrue(obs == wrapped_obs)
+
+
+@pytest.mark.parametrize(
+    ("env_name", "args", "action_unclipped_env", "action_clipped_env"),
+    (
+        [
+            "BipedalWalker-v3",
+            (
+                np.tile(np.array([-0.5, -0.5, -0.5, -0.5], dtype="float32"), (NUM_ENVS, 1)),
+                np.tile(np.array([0.5, 0.5, 0.5, 0.5], dtype="float32"), (NUM_ENVS, 1)),
+            ),
+            np.array([0.5, 0.5, 0.5, 0.5]),
+            np.array([10, 10, 10, 10]),
+        ],
+    ),
+)
+def test_clip_actions_v0_vector_env(env_name, args, action_unclipped_env, action_clipped_env):
+    """Tests clipped actions in vectorized environment.
+
+    Tests whether out of bound actions 
+    are correctly clipped in vectorized environment.
+    """
+    env = gym.vector.make(env_name, num_envs=NUM_ENVS)
+    env.reset(seed=SEED)
+    obs, _, _, _ = env.step([action_unclipped_env for _ in range(NUM_ENVS)])
+
+    env = gym.vector.make(env_name, num_envs=NUM_ENVS)
+    env.reset(seed=SEED)
+    wrapped_env = clip_actions_v0(env, args)
+    wrapped_obs, _, _, _ = wrapped_env.step([action_clipped_env for _ in range(NUM_ENVS)])
+
+    assert np.alltrue(obs == wrapped_obs)
 
 
 @pytest.mark.parametrize(
@@ -86,7 +170,7 @@ def test_clip_actions_v0_nested_dict_action(env, args, action):
     executed_actions = info["action"]
 
     nested_action = executed_actions["nested"]
-    while isinstance(nested_action, dict):
+    while isinstance(nested_action, Dict):
         nested_action = nested_action["nested"]
 
     assert executed_actions["box"] == NEW_BOX_HIGH
@@ -131,9 +215,9 @@ def test_clip_actions_v0_tuple_action(env, args, action):
             TestingEnv(action_space=TESTING_DOUBLY_NESTED_TUPLE_ACTION_SPACE),
             [
                 (NEW_BOX_LOW, NEW_BOX_HIGH),
-                [None, [(NEW_NESTED_BOX_LOW, NEW_NESTED_BOX_HIGH)]],
+                [None, [None, (NEW_NESTED_BOX_LOW, NEW_NESTED_BOX_HIGH)]],
             ],
-            [NEW_BOX_HIGH + 1, [0, [NEW_NESTED_BOX_HIGH + 1]]],
+            [NEW_BOX_HIGH + 1, [0, [0, (NEW_NESTED_BOX_HIGH + 1)]]],
         ),
     ],
 )
@@ -199,47 +283,3 @@ def test_clip_actions_v0_tuple_within_dict(env, args, action):
     executed_actions = info["action"]
 
     assert executed_actions["tuple"][0] == NEW_BOX_HIGH
-
-
-@pytest.mark.parametrize(
-    ("env_name", "args", "action_unclipped_env", "action_clipped_env"),
-    (
-        [
-            "MountainCarContinuous-v0",
-            (np.array([-0.5], dtype="float32"), np.array([0.5], dtype="float32")),
-            np.array([0.5]),
-            np.array([1]),
-        ],
-        [
-            "BipedalWalker-v3",
-            (-0.5, 0.5),
-            np.array([0.5, 0.5, 0.5, 0.5]),
-            np.array([10, 10, 10, 10]),
-        ],
-        [
-            "BipedalWalker-v3",
-            (
-                np.array([-0.5, -1, -1, -1], dtype="float32"),
-                np.array([0.5, 0.5, 1, 1], dtype="float32"),
-            ),
-            np.array([0.5, 0.5, 1, 1]),
-            np.array([10, 10, 10, 10]),
-        ],
-    ),
-)
-def test_clip_actions_v0(env_name, args, action_unclipped_env, action_clipped_env):
-    """Tests if actions out of bound are correctly clipped.
-
-    Tests whether out of bound actions for the wrapped
-    environments are correctly clipped.
-    """
-    env = gym.make(env_name)
-    env.reset(seed=SEED)
-    obs, _, _, _ = env.step(action_unclipped_env)
-
-    env = gym.make(env_name)
-    env.reset(seed=SEED)
-    wrapped_env = clip_actions_v0(env, args)
-    wrapped_obs, _, _, _ = wrapped_env.step(action_clipped_env)
-
-    assert np.alltrue(obs == wrapped_obs)

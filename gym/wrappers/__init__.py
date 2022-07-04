@@ -12,6 +12,7 @@ from gym.dev_wrappers.lambda_observations import (
     filter_observations_v0,
     flatten_observations_v0,
     resize_observations_v0,
+    grayscale_observations_v0,
 )
 from gym.wrappers.atari_preprocessing import AtariPreprocessing
 from gym.wrappers.autoreset import AutoResetWrapper

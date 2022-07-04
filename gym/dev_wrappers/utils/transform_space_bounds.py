@@ -19,7 +19,14 @@ def _transform_space_box(space, args: FuncArgType[TypingTuple[int, int]], fn: Ca
     """Change `Box` space low and high value."""
     if not args:
         return space
-    return Box(*args, shape=space.shape)
+    low, high = args
+    
+    return Box(
+        low if low is not None else space.low, 
+        high if high is not None else space.high,
+        shape=space.shape,
+        dtype=space.dtype
+    )
 
 
 @transform_space_bounds.register(Discrete)

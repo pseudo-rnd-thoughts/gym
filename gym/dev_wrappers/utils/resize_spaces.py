@@ -20,8 +20,8 @@ def resize_space(
 def _resize_space_box(space, args: FuncArgType[TypingTuple[int, int]], fn: Callable):
     if args is not None:
         return Box(
-            tinyscaler.scale(space.low, args),
-            tinyscaler.scale(space.high, args),
+            tinyscaler.scale(space.low, args, mode='bilinear'),
+            tinyscaler.scale(space.high, args, mode='bilinear'),
             shape=args,
             dtype=space.dtype,
         )

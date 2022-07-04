@@ -94,12 +94,12 @@ class filter_observations_v0(lambda_observations_v0):
         >>> env = ExampleEnv(observation_space=Dict(obs=Box(-1, 1, ()), time=Discrete(3)))
         >>> env = filter_observations_v0(env, ['obs'])
         >>> env.observation_space
-        TODO
+        Dict(obs: Box(-1.0, 1.0, (), float32))
 
         >>> env = ExampleEnv(observation_space=Dict(obs=Box(-1, 1, ()), time=Discrete(3)))
         >>> env = filter_observations_v0(env, {'obs': True, 'time': False})
         >>> env.observation_space
-        TODO
+        Dict(obs: Box(-1.0, 1.0, (), float32))
 
     Example with Tuple observation:
         >>> env = ExampleEnv(observation_space=Tuple([Box(-1, 1, ()), Box(-2, 2, ()), Discrete(3)]))
@@ -158,23 +158,26 @@ class flatten_observations_v0(lambda_observations_v0):
     Basic Example, fully flattens the environment observation:
         >>> import gym
         >>> from gym.spaces import Dict, Box
-        >>> env = gym.make("CarRacing-v1")
+        >>> env = gym.make("CarRacingDiscrete-v1")
         >>> env.observation_space
-        TODO
+        Box(0, 255, (96, 96, 3), uint8)
         >>> env = flatten_observations_v0(env)
         >>> env.observation_space
-        TODO
+        Box(0, 255, (27648,), uint8)
+        >>> obs, _, _, _  = env.step(1)
+        >>> obs.shape
+        (27648,)
 
         >>> env = ExampleEnv(observation_space=Dict(left_eye=Box(0, 1, (10, 10, 3)), right_eye=Box(0, 1, (20, 20, 3))))
         >>> env = flatten_observations_v0(env)
         >>> env.observation_space
-        TODO
+        Box(0.0, 1.0, (1500,), float32)
 
     Partially flatten example with composite observation spaces:
         >>> env = ExampleEnv(observation_space=Dict(left_arm=Box(-1, 1, (3, 3)), right_arm=Box(-1, 1, (3, 3))))
         >>> env = flatten_observations_v0(env, {"left_arm": True, "right_arm": False})
         >>> env.observation_space
-        TODO
+        Dict(left_arm: Box(-1.0, 1.0, (9,), float32)), right_arm: Box(-1.0, 1.0, (3, 3), float32))
     """
 
     def __init__(self, env: gym.Env, args: Optional[FuncArgType[bool]] = None):
@@ -186,6 +189,7 @@ class flatten_observations_v0(lambda_observations_v0):
         """
         if args is None:
             flatten_obs_space = flatten_space(env.observation_space)
+            func_args = env.observation_space
         else:
             flatten_obs_space = apply_function(
                 env.observation_space,
@@ -194,10 +198,15 @@ class flatten_observations_v0(lambda_observations_v0):
                 args,
             )
 
+            func_args = {}
+            for arg, space in zip(args.keys(), flatten_obs_space.values()):
+                if args.get(arg, False):
+                    func_args[arg] = space
+
         super().__init__(
             env,
             lambda obs, space: obs if space is None else flatten(space, obs),
-            args,
+            func_args,
             flatten_obs_space,
         )
 
@@ -210,24 +219,26 @@ class grayscale_observations_v0(lambda_observations_v0):
         >>> from gym.spaces import Dict, Box, Discrete
         >>> env = gym.make("CarRacing-v1")
         >>> env.observation_space
-        TODO
+        Box(0, 255, (96, 96, 3), uint8)
         >>> env = grayscale_observations_v0(env)
         >>> env.observation_space
-        TODO
+        Box(0, 255, (96, 96), uint8)
 
     Composite Example with Multiple Box observation space:
         >>> env = gym.vector.make("CarRacing-v1", num_envs=3)
         >>> env.observation_space
-        TODO
+        Box(0, 255, (3, 96, 96, 3), uint8)
         >>> env = grayscale_observations_v0(env)
         >>> env.observation_space
-        TODO
+        Box(0, 255, (3, 96), uint8)
 
     Composite Example with Partial Box observation space:
-        >>> env = ExampleEnv(observation_space=Dict(obs=Box(0, 1, (96, 96, 3)), time=Discrete(10)))
+        >>> env = ExampleEnv(observation_space=Dict(obs=Box(0, 255, (96, 96, 3), np.uint8), time=Discrete(10)))
+        >>> env.observation_space
+        Dict(obs: Box(0, 255, (96, 96, 3), uint8), time: Discrete(10))
         >>> env = grayscale_observations_v0(env, {"obs": True, "time": False})
         >>> env.observation_space
-        TODO
+        Dict(obs: Box(0, 255, (96, 96), uint8), time: Discrete(10))
     """
 
     def __init__(self, env: gym.Env, args: FuncArgType[bool] = True):
@@ -238,6 +249,7 @@ class grayscale_observations_v0(lambda_observations_v0):
             args: The arguments for what to convert colour to grayscale in the observation
         """
         observation_space = self._grayscale_space(env, args)
+
         super().__init__(
             env,
             lambda obs, arg: obs

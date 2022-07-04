@@ -1,6 +1,7 @@
 """Lambda reward wrappers that uses jumpy for compatibility with jax (i.e. brax) and numpy environments."""
 
 from typing import Callable, Optional, Union
+from gym.error import InvalidBound
 
 import jumpy as jp
 import numpy as np
@@ -26,13 +27,22 @@ class lambda_reward_v0(gym.RewardWrapper):
         env: gym.Env,
         fn: Callable[[Union[float, int, np.ndarray]], Union[float, int, np.ndarray]],
     ):
-        """Initialize lambda_reward_v0 wrapper."""
+        """Initialize lambda_reward_v0 wrapper.
+
+        Args:
+            env (Env): The environment to apply the wrapper
+            fn: (Callable): The function to apply to reward        
+        """
         super().__init__(env)
 
         self.fn = fn
 
-    def reward(self, reward):
-        """Apply function to reward."""
+    def reward(self, reward: Union[float, int, np.ndarray]):
+        """Apply function to reward.
+
+        Args:
+            reward (Union[float, int, np.ndarray]): environment's reward        
+        """
         return self.fn(reward)
 
 
@@ -55,13 +65,19 @@ class clip_rewards_v0(lambda_reward_v0):
         min_reward: Optional[Union[float, jp.ndarray]] = None,
         max_reward: Optional[Union[float, jp.ndarray]] = None,
     ):
-        """Initialize clip_reward_v0 wrapper."""
+        """Initialize clip_reward_v0 wrapper.
+
+        Args:
+            env (Env): The environment to apply the wrapper
+            min_reward (Union[float, jp.ndarray]): lower bound to apply
+            max_reward (Union[float, jp.ndarray]): higher bound to apply     
+        """
         if min_reward is None and max_reward is None:
-            raise Exception(
+            raise InvalidBound(
                 "Both `min_reward` and `max_reward` cannot be None"
-            )  # TODO update exception
+            )
         elif max_reward and min_reward and max_reward < min_reward:
-            raise Exception(
+            raise InvalidBound(
                 f"Min reward ({min_reward}) must be less than max reward ({max_reward})"  # TODO update exception
             )
         else:
