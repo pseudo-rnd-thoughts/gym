@@ -2,38 +2,33 @@ import numpy as np
 import pytest
 
 import gym
-from gym.wrappers import AtariPreprocessing, GrayScaleObservation
+from gym import spaces
+from gym.wrappers import GrayScaleObservation
 
-pytest.importorskip("gym.envs.atari")
 pytest.importorskip("cv2")
 
 
-@pytest.mark.parametrize(
-    "env_id", ["PongNoFrameskip-v0", "SpaceInvadersNoFrameskip-v0"]
-)
+# todo - These tests should be run with Atari environments however due to current implementations, this is not possible
+@pytest.mark.parametrize("env_id", ["CarRacing-v1"])
 @pytest.mark.parametrize("keep_dim", [True, False])
 def test_gray_scale_observation(env_id, keep_dim):
-    gray_env = AtariPreprocessing(
-        gym.make(env_id, disable_env_checker=True), screen_size=84, grayscale_obs=True
-    )
-    rgb_env = AtariPreprocessing(
-        gym.make(env_id, disable_env_checker=True), screen_size=84, grayscale_obs=False
-    )
-    wrapped_env = GrayScaleObservation(rgb_env, keep_dim=keep_dim)
+    rgb_env = gym.make(env_id, disable_env_checker=True)
+    assert len(rgb_env.observation_space.shape) == 3
     assert rgb_env.observation_space.shape[-1] == 3
+    assert rgb_env.observation_space.dtype == np.uint8
 
-    seed = 0
-
-    gray_obs = gray_env.reset(seed=seed)
-    wrapped_obs = wrapped_env.reset(seed=seed)
-
+    grayscale_env = GrayScaleObservation(rgb_env, keep_dim=keep_dim)
+    assert grayscale_env.action_space is rgb_env.action_space
+    assert isinstance(grayscale_env.observation_space, spaces.Box)
     if keep_dim:
-        assert wrapped_env.observation_space.shape[-1] == 1
-        assert len(wrapped_obs.shape) == 3
-        wrapped_obs = wrapped_obs.squeeze(-1)
+        assert len(grayscale_env.observation_space.shape) == 3
+        assert grayscale_env.observation_space.shape[-1] == 1
     else:
-        assert len(wrapped_env.observation_space.shape) == 2
-        assert len(wrapped_obs.shape) == 2
+        assert len(grayscale_env.observation_space.shape) == 2
+    assert grayscale_env.observation_space.shape[:2] == rgb_env.observation_space.shape[:2]
 
-    # ALE gray scale is slightly different, but no more than by one shade
-    assert np.allclose(gray_obs.astype("int32"), wrapped_obs.astype("int32"), atol=1)
+    grayscale_obs = grayscale_env.reset(seed=123)
+    assert grayscale_obs in grayscale_env.observation_space
+
+    grayscale_obs, _, _, _ = grayscale_env.step(grayscale_env.action_space.sample())
+    assert grayscale_obs in grayscale_env.observation_space

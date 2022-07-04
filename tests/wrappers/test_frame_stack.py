@@ -2,6 +2,7 @@ import numpy as np
 import pytest
 
 import gym
+from gym import spaces
 from gym.wrappers import FrameStack
 
 try:
@@ -10,29 +11,20 @@ except ImportError:
     lz4 = None
 
 
-pytest.importorskip("gym.envs.atari")
-
-
-@pytest.mark.parametrize("env_id", ["CartPole-v1", "Pendulum-v1", "Pong-v0"])
+# todo - These tests should be run with Atari environments however due to current implementations, this is not possible
+@pytest.mark.parametrize("env_id", ["CartPole-v1", "Pendulum-v1", "CarRacing-v1"])
 @pytest.mark.parametrize("num_stack", [2, 3, 4])
-@pytest.mark.parametrize(
-    "lz4_compress",
-    [
-        pytest.param(
-            True,
-            marks=pytest.mark.skipif(
-                lz4 is None, reason="Need lz4 to run tests with compression"
-            ),
-        ),
-        False,
-    ],
-)
+@pytest.mark.parametrize("lz4_compress", [lz4 is not None, False])
 def test_frame_stack(env_id, num_stack, lz4_compress):
     env = gym.make(env_id, disable_env_checker=True)
-    shape = env.observation_space.shape
+    obs_space = env.observation_space
     env = FrameStack(env, num_stack, lz4_compress)
-    assert env.observation_space.shape == (num_stack,) + shape
-    assert env.observation_space.dtype == env.env.observation_space.dtype
+
+    assert isinstance(obs_space, spaces.Box)
+    assert isinstance(env.observation_space, spaces.Box)
+    assert env.observation_space.shape == (num_stack,) + obs_space.shape
+    assert env.observation_space.dtype == obs_space.dtype
+    assert np.all(env.observation_space.low[i] == obs_space.low for i in range(num_stack))
 
     dup = gym.make(env_id, disable_env_checker=True)
 
