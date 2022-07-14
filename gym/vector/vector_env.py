@@ -38,6 +38,7 @@ class VectorEnv(gym.Env):
             action_space: Action space of a single environment.
             new_step_api (bool): Whether the vector env's step method outputs two boolean arrays (new API) or one boolean array (old API)
         """
+        assert 0 < num_envs
         self.num_envs = num_envs
         self.is_vector_env = True
         self.observation_space = batch_space(observation_space, n=num_envs)

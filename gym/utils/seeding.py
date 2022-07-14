@@ -2,7 +2,7 @@
 import hashlib
 import os
 import struct
-from typing import Any, List, Optional, Tuple, Union
+from typing import List, Optional, Tuple, Union
 
 import numpy as np
 
@@ -10,7 +10,7 @@ from gym import error
 from gym.logger import deprecation
 
 
-def np_random(seed: Optional[int] = None) -> Tuple["RandomNumberGenerator", Any]:
+def np_random(seed: Optional[int] = None) -> Tuple["RandomNumberGenerator", int]:
     """Generates a random number generator from the seed and returns the Generator and seed.
 
     Args:
