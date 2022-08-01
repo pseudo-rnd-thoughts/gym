@@ -4,6 +4,8 @@ from typing import Any, Callable, Dict, Generic, Optional, Tuple, TypeVar
 
 import numpy as np
 
+from gym import Space
+
 StateType = TypeVar("StateType")
 ActType = TypeVar("ActType")
 ObsType = TypeVar("ObsType")
@@ -29,9 +31,10 @@ class FuncEnv(Generic[StateType, ObsType, ActType, RewardType, TerminalType]):
     we intend to flesh it out and officially expose it to end users.
     """
 
-    def __init__(self, options: Optional[Dict[str, Any]] = None):
+    def __init__(self, observation_space: Space, action_space: Space):
         """Initialize the environment constants."""
-        self.__dict__.update(options or {})
+        self.observation_space = observation_space
+        self.action_space = action_space
 
     def initial(self, rng: Any) -> StateType:
         """Initial state."""
@@ -53,6 +56,9 @@ class FuncEnv(Generic[StateType, ObsType, ActType, RewardType, TerminalType]):
 
     def terminal(self, state: StateType) -> TerminalType:
         """Terminal state."""
+        raise NotImplementedError
+
+    def info(self, state: StateType) -> Dict[str, Any]:
         raise NotImplementedError
 
     def transform(self, func: Callable[[Callable], Callable]):

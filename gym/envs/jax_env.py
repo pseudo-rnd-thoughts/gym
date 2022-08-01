@@ -1,6 +1,5 @@
-import dataclasses
-import inspect
-from typing import Any, Callable, Dict, Generic, Optional, Tuple, TypeVar, Union
+from functools import partial
+from typing import Any, Dict, List, Optional, Sequence, Tuple, TypeVar, Union
 
 import jax
 import jax.numpy as jnp
@@ -8,31 +7,24 @@ import numpy as onp
 from flax import struct
 
 import gym
-from gym import Space, logger, spaces
+from gym import Space
 from gym.core import ActType, ObsType
+from gym.functional import FuncEnv
 from gym.spaces.space import T_cov
 from gym.utils import seeding
 
 StateType = TypeVar("StateType")
 RngType = TypeVar("RngType")
 
-
-@dataclasses.dataclass
-class FunctionalEnv(Generic[ObsType, ActType, StateType, RngType]):
-    observation_space: spaces.Space
-    action_space: spaces.Space
-
-    initial_state_fn: Callable[
-        [RngType, Optional[Dict[str, Any]]],
-        Tuple[StateType, RngType, ObsType, Dict[str, Any]],
-    ]
-    state_transition_fn: Callable[
-        [StateType, ActType, RngType],
-        Tuple[StateType, RngType, ObsType, Any, Any, Any, Dict[str, Any]],
-    ]
-
-
 JaxState = struct.dataclass
+
+
+def jax_to_numpy(value):
+    pass
+
+
+def numpy_to_jax(value):
+    pass
 
 
 class JaxSpace(Space[Any]):
@@ -52,53 +44,39 @@ class JaxSpace(Space[Any]):
 
         return self.space.contains(numpy_x)
 
+    def seed(self, seed: Optional[int] = None) -> list:
+        return self.space.seed(seed)
+
+    def to_jsonable(self, sample_n: Sequence[T_cov]) -> list:
+        return self.space.to_jsonable(jax_to_numpy(sample_n))
+
+    def from_jsonable(self, sample_n: list) -> List[T_cov]:
+        return [numpy_to_jax(value) for value in self.space.from_jsonable(sample_n)]
+
 
 class JaxEnv(gym.Env[ObsType, ActType]):
     def __init__(
         self,
-        functional_env: FunctionalEnv[JaxState, ObsType, ActType, jnp.DeviceArray],
-        jit_fn: bool = True,
+        func_env: FuncEnv[JaxState, ObsType, ActType, jnp.DeviceArray],
+        jit_funcs: bool = True,
         backend: Optional[str] = None,
-        static_reset_options: bool = True,
     ):
-        assert isinstance(functional_env.observation_space, JaxSpace)
-        assert isinstance(functional_env.action_space, JaxSpace)
-        self.observation_space: JaxSpace = functional_env.observation_space
-        self.action_space: JaxSpace = functional_env.action_space
+        # Expectation that jax environment will have a jax-based space
+        assert isinstance(func_env.observation_space, JaxSpace)
+        assert isinstance(func_env.action_space, JaxSpace)
 
-        initial_state_signature = inspect.signature(functional_env.initial_state_fn)
-        if "self" in initial_state_signature.parameters:
-            logger.warn(
-                "The reset function contains the argument `self`, we recommend that the reset function is stateless and does not include `self` for optimisation."
-            )
-        state_transition_signature = inspect.signature(
-            functional_env.state_transition_fn
-        )
-        if "self" in state_transition_signature.parameters:
-            logger.warn(
-                "The step function contains the argument `self`, we recommend that the step function is stateless and does not include `self` for optimisation."
-            )
+        # If enabled, transform the environment with `jax.jit`
+        if jit_funcs:
+            func_env.transform(partial(jax.jit, backend=backend))
 
-        if jit_fn:
-            if static_reset_options:
-                self.reset_fn = jax.jit(
-                    functional_env.initial_state_fn, static_argnums=1, backend=backend
-                )
-            else:
-                self.reset_fn = jax.jit(
-                    functional_env.initial_state_fn, backend=backend
-                )
-            self.step_fn = jax.jit(functional_env.state_transition_fn, backend=backend)
-        else:
-            self.reset_fn = functional_env.initial_state_fn
-            self.step_fn = functional_env.state_transition_fn
-
+        # Initialise class variables
+        self.env = func_env
         self.state: Optional[JaxState] = None
-        _, seed = seeding.np_random()
         self._np_random: jnp.DeviceArray = jax.random.PRNGKey(
-            seed % onp.iinfo(onp.int64).max
+            seeding.np_random()[1] % onp.iinfo(onp.int64).max
         )
 
+        # For rendering, to ensure that pygame is closed when the environment is deleted correctly.
         self._is_closed = False
 
     @property
@@ -106,7 +84,7 @@ class JaxEnv(gym.Env[ObsType, ActType]):
         return self._np_random
 
     @np_random.setter
-    def np_random(self, value):
+    def np_random(self, value: jnp.DeviceArray):
         self._np_random = value
 
     def reset(
@@ -119,29 +97,33 @@ class JaxEnv(gym.Env[ObsType, ActType]):
         if seed is not None:
             self.np_random = jax.random.PRNGKey(seed)
 
-        self.state, self.np_random, obs, info = self.reset_fn(self.np_random, options)
+        self.np_random, initial_rng = jax.random.split(self.np_random)
+        self.state = self.env.initial(initial_rng)
 
         if return_info:
-            return obs, info
+            return self.env.observation(self.state), self.env.info(self.state)
         else:
-            return obs
+            return self.env.observation(self.state)
 
     def step(
         self, action: ActType
     ) -> Tuple[
         ObsType, jnp.DeviceArray, jnp.DeviceArray, jnp.DeviceArray, Dict[str, Any]
     ]:
-        (
-            self.state,
-            self.np_random,
-            obs,
-            reward,
-            terminated,
-            truncated,
-            info,
-        ) = self.step_fn(self.state, action, self.np_random)
+        self.np_random, transition_rng = jax.random.split(self.np_random)
 
-        return obs, reward, terminated, truncated, info
+        next_state = self.env.transition(self.state, action, transition_rng)
+
+        obs = self.env.observation(next_state)
+        reward = self.env.reward(self.state, action, next_state)
+        terminated = self.env.terminal(next_state)
+        info = self.env.info(next_state)
+
+        # todo: truncation
+        truncation = jnp.zeros(1)
+
+        self.state = next_state
+        return obs, reward, terminated, truncation, info
 
     def close(self):
         self._is_closed = True
@@ -252,3 +234,13 @@ class VectorizeJaxEnv(gym.vector.VectorEnv):
             return f"{self.__class__.__name__}({self.num_envs})"
         else:
             return f"{self.__class__.__name__}({self.spec.id}, {self.num_envs})"
+
+
+def jax_func_env_checker(env: FuncEnv):
+
+    # Chex max_compile
+    # observation type
+    # action type
+    # function signatures
+
+    pass
