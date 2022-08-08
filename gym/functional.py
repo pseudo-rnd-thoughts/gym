@@ -1,10 +1,8 @@
 """Base class and definitions for an alternative, functional backend for gym envs, particularly suitable for hardware accelerated and otherwise transformed environments."""
 
-from typing import Any, Callable, Dict, Generic, Optional, Tuple, TypeVar
+from typing import Any, Callable, Dict, Generic, TypeVar
 
-import numpy as np
-
-from gym import Space
+import gym
 
 StateType = TypeVar("StateType")
 ActType = TypeVar("ActType")
@@ -14,7 +12,7 @@ TerminalType = TypeVar("TerminalType")
 RenderStateType = TypeVar("RenderStateType")
 
 
-class FuncEnv(Generic[StateType, ObsType, ActType, RewardType, TerminalType]):
+class FunctionalEnv(Generic[StateType, ObsType, ActType, RewardType, TerminalType]):
     """Base class (template) for functional envs.
 
     This API is meant to be used in a stateless manner, with the environment state being passed around explicitly.
@@ -31,8 +29,10 @@ class FuncEnv(Generic[StateType, ObsType, ActType, RewardType, TerminalType]):
     we intend to flesh it out and officially expose it to end users.
     """
 
-    def __init__(self, observation_space: Space, action_space: Space):
-        """Initialize the environment constants."""
+    def __init__(
+        self, observation_space: gym.Space[ObsType], action_space: gym.Space[ActType]
+    ):
+        """Constructor for functional environment to require observation and action spaces."""
         self.observation_space = observation_space
         self.action_space = action_space
 
@@ -58,19 +58,21 @@ class FuncEnv(Generic[StateType, ObsType, ActType, RewardType, TerminalType]):
         """Terminal state."""
         raise NotImplementedError
 
-    def info(self, state: StateType) -> Dict[str, Any]:
+    def truncate(self, state: StateType) -> TerminalType:
+        """Truncation state."""
+        return NotImplementedError
+
+    def information(self, state: StateType) -> Dict[str, Any]:
+        """The information for a state."""
         raise NotImplementedError
 
     def transform(self, func: Callable[[Callable], Callable]):
         """Functional transformations."""
         self.initial = func(self.initial)
         self.transition = func(self.transition)
+
         self.observation = func(self.observation)
         self.reward = func(self.reward)
         self.terminal = func(self.terminal)
-
-    def render_image(
-        self, state: StateType, render_state: RenderStateType
-    ) -> Tuple[RenderStateType, np.ndarray]:
-        """Show the state."""
-        raise NotImplementedError
+        self.truncate = func(self.truncate)
+        self.information = func(self.information)

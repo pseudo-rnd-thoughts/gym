@@ -1,144 +1,86 @@
 """
 Implementation of a Jax-accelerated pendulum environment.
 """
-from os import path
-from typing import Optional, Tuple, Union
+from typing import Any, Dict, Union
 
 import jax
 import jax.numpy as jnp
 import numpy as np
-import pygame
-from jax.random import PRNGKey
-from pygame import gfxdraw
 
-import gym
-from gym.functional import ActType, FuncEnv, RenderStateType, StateType
+from gym.envs.jax_env import JaxSpace
+from gym.functional import ActType, FunctionalEnv, StateType
+from gym.spaces import Box
 
 
-class PendulumF(FuncEnv[jnp.ndarray, jnp.ndarray, int, float, bool]):
-    """Pendulum but in jax and functional."""
+class FunctionalPendulum(
+    FunctionalEnv[jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray]
+):
+    """A functional implementation of classic control Pendulum in Jax."""
 
     max_speed = 8
     max_torque = 2.0
     dt = 0.05
-    g = 10.0
-    m = 1.0
-    l = 1.0
-    high_x = jnp.pi
-    high_y = 1.0
+    gravity = 10.0
+    mass = 1.0
+    length = 1.0
+    max_x = jnp.pi
+    max_y = 1.0
 
-    screen_dim = 500
+    def __init__(self, options: Dict[str, Any] = None):
+        if options is not None:
+            for name, value in options.items():
+                setattr(self, name, value)
 
-    observation_space = gym.spaces.Box(-np.inf, np.inf, shape=(4,), dtype=np.float32)
-    action_space = gym.spaces.Box(-max_torque, max_torque, shape=(1,), dtype=np.float32)
+        super().__init__(
+            observation_space=JaxSpace(Box(-np.inf, np.inf, shape=(4,))),
+            action_space=JaxSpace(Box(-self.max_torque, self.max_torque)),
+        )
 
-    def initial(self, rng: PRNGKey):
+    def initial(self, rng: jnp.ndarray):
         """Initial state generation."""
-        high = jnp.array([self.high_x, self.high_y])
+        high = jnp.array([self.max_x, self.max_y])
         return jax.random.uniform(key=rng, minval=-high, maxval=high, shape=high.shape)
 
     def transition(
         self, state: jnp.ndarray, action: Union[int, jnp.ndarray], rng: None = None
     ) -> jnp.ndarray:
         """Pendulum transition."""
-        th, thdot = state  # th := theta
-        u = action
+        theta, theta_dot = state
+        u = jnp.clip(action, -self.max_torque, self.max_torque)[0]
 
-        g = self.g
-        m = self.m
-        l = self.l
-        dt = self.dt
+        new_theta_dot = (
+            theta_dot
+            + (
+                3 * self.gravity / (2 * self.length) * jnp.sin(theta)
+                + 3.0 / (self.mass * self.length**2) * u
+            )
+            * self.dt
+        )
+        new_theta_dot = jnp.clip(new_theta_dot, -self.max_speed, self.max_speed)
+        new_theta = theta + new_theta_dot * self.dt
 
-        u = jnp.clip(u, -self.max_torque, self.max_torque)[0]
-
-        newthdot = thdot + (3 * g / (2 * l) * jnp.sin(th) + 3.0 / (m * l**2) * u) * dt
-        newthdot = jnp.clip(newthdot, -self.max_speed, self.max_speed)
-        newth = th + newthdot * dt
-
-        new_state = jnp.array([newth, newthdot])
-        return new_state
+        return jnp.array([new_theta, new_theta_dot])
 
     def observation(self, state: jnp.ndarray) -> jnp.ndarray:
-        theta, thetadot = state
-        return jnp.array([jnp.cos(theta), jnp.sin(theta), thetadot])
+        theta, theta_dot = state
+        return jnp.array([jnp.cos(theta), jnp.sin(theta), theta_dot])
 
-    def reward(self, state: StateType, action: ActType, next_state: StateType) -> float:
-        th, thdot = state  # th := theta
-        u = action
+    def reward(
+        self, state: StateType, action: ActType, next_state: StateType
+    ) -> jnp.ndarray:
+        theta, theta_dot = next_state  # todo - to confirm, next state not state
+        u = jnp.clip(action, -self.max_torque, self.max_torque)[0]
 
-        u = jnp.clip(u, -self.max_torque, self.max_torque)[0]
-
-        th_normalized = ((th + jnp.pi) % (2 * jnp.pi)) - jnp.pi
-        costs = th_normalized**2 + 0.1 * thdot**2 + 0.001 * (u**2)
+        th_normalized = ((theta + jnp.pi) % (2 * jnp.pi)) - jnp.pi
+        costs = th_normalized**2 + 0.1 * theta_dot**2 + 0.001 * (u**2)
 
         return -costs
 
-    def terminal(self, state: StateType) -> bool:
-        return False
+    def terminal(self, state: StateType) -> jnp.ndarray:
+        return jnp.zeros((), dtype=jnp.bool_)
 
-    def render_image(
-        self,
-        state: StateType,
-        render_state: Tuple[pygame.Surface, pygame.time.Clock, Optional[float]],
-    ) -> Tuple[RenderStateType, np.ndarray]:
-        screen, clock, last_u = render_state
+    def truncate(self, state: StateType) -> jnp.ndarray:
+        return jnp.zeros((), dtype=jnp.bool_)
 
-        surf = pygame.Surface((self.screen_dim, self.screen_dim))
-        surf.fill((255, 255, 255))
-
-        bound = 2.2
-        scale = self.screen_dim / (bound * 2)
-        offset = self.screen_dim // 2
-
-        rod_length = 1 * scale
-        rod_width = 0.2 * scale
-        l, r, t, b = 0, rod_length, rod_width / 2, -rod_width / 2
-        coords = [(l, b), (l, t), (r, t), (r, b)]
-        transformed_coords = []
-        for c in coords:
-            c = pygame.math.Vector2(c).rotate_rad(state[0] + np.pi / 2)
-            c = (c[0] + offset, c[1] + offset)
-            transformed_coords.append(c)
-        gfxdraw.aapolygon(surf, transformed_coords, (204, 77, 77))
-        gfxdraw.filled_polygon(surf, transformed_coords, (204, 77, 77))
-
-        gfxdraw.aacircle(surf, offset, offset, int(rod_width / 2), (204, 77, 77))
-        gfxdraw.filled_circle(surf, offset, offset, int(rod_width / 2), (204, 77, 77))
-
-        rod_end = (rod_length, 0)
-        rod_end = pygame.math.Vector2(rod_end).rotate_rad(state[0] + np.pi / 2)
-        rod_end = (int(rod_end[0] + offset), int(rod_end[1] + offset))
-        gfxdraw.aacircle(
-            surf, rod_end[0], rod_end[1], int(rod_width / 2), (204, 77, 77)
-        )
-        gfxdraw.filled_circle(
-            surf, rod_end[0], rod_end[1], int(rod_width / 2), (204, 77, 77)
-        )
-
-        fname = path.join(path.dirname(__file__), "assets/clockwise.png")
-        img = pygame.image.load(fname)
-        if last_u is not None:
-            scale_img = pygame.transform.smoothscale(
-                img,
-                (scale * np.abs(last_u) / 2, scale * np.abs(last_u) / 2),
-            )
-            is_flip = bool(last_u > 0)
-            scale_img = pygame.transform.flip(scale_img, is_flip, True)
-            surf.blit(
-                scale_img,
-                (
-                    offset - scale_img.get_rect().centerx,
-                    offset - scale_img.get_rect().centery,
-                ),
-            )
-
-        # drawing axle
-        gfxdraw.aacircle(surf, offset, offset, int(0.05 * scale), (0, 0, 0))
-        gfxdraw.filled_circle(surf, offset, offset, int(0.05 * scale), (0, 0, 0))
-
-        surf = pygame.transform.flip(surf, False, True)
-        screen.blit(surf, (0, 0))
-
-        return (screen, clock, last_u), np.transpose(
-            np.array(pygame.surfarray.pixels3d(screen)), axes=(1, 0, 2)
-        )
+    def information(self, state: StateType) -> Dict[str, jnp.ndarray]:
+        return {"test": jnp.zeros(1)}
