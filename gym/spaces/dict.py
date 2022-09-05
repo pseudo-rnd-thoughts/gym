@@ -3,8 +3,7 @@ from collections import OrderedDict
 from collections.abc import Mapping
 from typing import Any
 from typing import Dict as TypingDict
-from typing import List, Optional, Union
-from typing import Sequence
+from typing import List, Optional, Sequence, Union
 
 import numpy as np
 
@@ -86,7 +85,9 @@ class Dict(Space[TypingDict[str, Any]], Mapping[str, Space[Any]]):
         elif spaces is None:
             spaces = {}
         else:
-            raise TypeError(f"Unexpected Dict space input, expecting dict, OrderedDict or Sequence, actual type: {type(spaces)}")
+            raise TypeError(
+                f"Unexpected Dict space input, expecting dict, OrderedDict or Sequence, actual type: {type(spaces)}"
+            )
 
         # Add kwargs to spaces to allow both dictionary and keywords to be used
         for key, space in spaces_kwargs.items():
@@ -104,16 +105,16 @@ class Dict(Space[TypingDict[str, Any]], Mapping[str, Space[Any]]):
             ), f"Dict space element is not an instance of Space: key='{key}', space={space}"
 
         # None for shape and dtype, since it'll require special handling
-        super().__init__(
-            None, None, seed 
-        )  
+        super().__init__(None, None, seed)
 
     @property
     def is_np_flattenable(self):
         """Checks whether this space can be flattened to a :class:`spaces.Box`."""
         return all(space.is_np_flattenable for space in self.spaces.values())
 
-    def seed(self, seed: Optional[Union[TypingDict[str, Any], int]] = None) -> List[int]:
+    def seed(
+        self, seed: Optional[Union[TypingDict[str, Any], int]] = None
+    ) -> List[int]:
         """Seed the PRNG of this space and all subspaces.
 
         Depending on the type of seed, the subspaces will be seeded differently
@@ -150,7 +151,9 @@ class Dict(Space[TypingDict[str, Any]], Mapping[str, Space[Any]]):
 
         return seeds
 
-    def sample(self, mask: Optional[TypingDict[str, Any]] = None) -> TypingDict[str, Any]:
+    def sample(
+        self, mask: Optional[TypingDict[str, Any]] = None
+    ) -> TypingDict[str, Any]:
         """Generates a single random sample from this space.
 
         The sample is an ordered dictionary of independent samples from the constituent spaces.
@@ -213,7 +216,9 @@ class Dict(Space[TypingDict[str, Any]], Mapping[str, Space[Any]]):
             and self.spaces == other.spaces  # OrderedDict.__eq__
         )
 
-    def to_jsonable(self, sample_n: Sequence[TypingDict[str, Any]]) -> TypingDict[str, List[Any]]:
+    def to_jsonable(
+        self, sample_n: Sequence[TypingDict[str, Any]]
+    ) -> TypingDict[str, List[Any]]:
         """Convert a batch of samples from this space to a JSONable data type."""
         # serialize as dict-repr of vectors
         return {
@@ -221,7 +226,9 @@ class Dict(Space[TypingDict[str, Any]], Mapping[str, Space[Any]]):
             for key, space in self.spaces.items()
         }
 
-    def from_jsonable(self, sample_n: TypingDict[str, List[Any]]) -> List[TypingDict[str, Any]]:
+    def from_jsonable(
+        self, sample_n: TypingDict[str, List[Any]]
+    ) -> List[TypingDict[str, Any]]:
         """Convert a JSONable data type to a batch of samples from this space."""
         sample_jsons: TypingDict[str, List[Any]] = {
             key: space.from_jsonable(sample_n[key])

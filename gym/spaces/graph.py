@@ -1,7 +1,8 @@
 """Implementation of a space that represents graph information where nodes and edges can be represented with euclidean space."""
-from typing import NamedTuple, Optional, Sequence, Tuple, Union, Any, Dict, List
+from typing import Any, Dict, List, NamedTuple, Optional, Sequence, Tuple, Union
 
 import numpy as np
+from numpy.typing import NDArray
 
 from gym.logger import warn
 from gym.spaces.box import Box
@@ -17,9 +18,10 @@ class GraphInstance(NamedTuple):
     * edges (Optional[np.ndarray]): an (m x ...) sized array representing the features for m nodes, (...) must adhere to the shape of the edge space.
     * edge_links (Optional[np.ndarray]): an (m x 2) sized array of ints representing the two nodes that each edge connects.
     """
-    nodes: np.ndarray[Any, np.dtype[Any]]
-    edges: Optional[np.ndarray[Any, np.dtype[Any]]]
-    edge_links: Optional[np.ndarray[Any, np.dtype[Any]]]
+
+    nodes: NDArray[Any]
+    edges: Optional[NDArray[Any]]
+    edge_links: Optional[NDArray[Any]]
 
 
 class Graph(Space[GraphInstance]):
@@ -92,8 +94,8 @@ class Graph(Space[GraphInstance]):
         self,
         mask: Optional[
             Tuple[
-                Optional[Union[np.ndarray[Any, np.dtype[Any]], Tuple[Any]]],
-                Optional[Union[np.ndarray[Any, np.dtype[Any]], Tuple[Any]]],
+                Optional[Union[NDArray[Any], Tuple[Any]]],
+                Optional[Union[NDArray[Any], Tuple[Any]]],
             ]
         ] = None,
         num_nodes: int = 10,
@@ -204,19 +206,22 @@ class Graph(Space[GraphInstance]):
             and (self.edge_space == other.edge_space)
         )
 
-    def to_jsonable(self, sample_n: Sequence[GraphInstance]) -> List[Dict[str, List[Union[int, float]]]]:
+    def to_jsonable(
+        self, sample_n: Sequence[GraphInstance]
+    ) -> List[Dict[str, List[Union[int, float]]]]:
         """Convert a batch of samples from this space to a JSONable data type."""
-        ret_n: List[Dict[str, List[Union[int, float]]]]= []
+        ret_n: List[Dict[str, List[Union[int, float]]]] = []
         for sample in sample_n:
-            ret = {}
-            ret["nodes"] = sample.nodes.tolist()
-            if sample.edges is not None:
+            ret = {"nodes": sample.nodes.tolist()}
+            if sample.edges is not None and sample.edge_links is not None:
                 ret["edges"] = sample.edges.tolist()
                 ret["edge_links"] = sample.edge_links.tolist()
             ret_n.append(ret)
         return ret_n
 
-    def from_jsonable(self, sample_n: Sequence[Dict[str, List[Union[int, float]]]]) -> List[GraphInstance]:
+    def from_jsonable(
+        self, sample_n: Sequence[Dict[str, List[Union[int, float]]]]
+    ) -> List[GraphInstance]:
         """Convert a JSONable data type to a batch of samples from this space."""
         ret: List[GraphInstance] = []
         for sample in sample_n:

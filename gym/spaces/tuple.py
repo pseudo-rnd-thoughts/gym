@@ -1,9 +1,9 @@
 """Implementation of a space that represents the cartesian product of other spaces."""
 from collections.abc import Sequence as CollectionSequence
-from typing import Iterable, Optional
+from typing import Any, Iterable, List, Optional
 from typing import Sequence as TypingSequence
 from typing import Tuple as TypingTuple
-from typing import Union, Any, List
+from typing import Union
 
 import numpy as np
 
@@ -48,9 +48,7 @@ class Tuple(Space[TypingTuple[Any, ...]], CollectionSequence[Any]):
         """Checks whether this space can be flattened to a :class:`spaces.Box`."""
         return all(space.is_np_flattenable for space in self.spaces)
 
-    def seed(
-        self, seed: Optional[Union[int, TypingSequence[int]]] = None
-    ) -> List[int]:
+    def seed(self, seed: Optional[Union[int, TypingSequence[int]]] = None) -> List[int]:
         """Seed the PRNG of this space and all subspaces.
 
         Depending on the type of seed, the subspaces will be seeded differently
@@ -130,7 +128,9 @@ class Tuple(Space[TypingTuple[Any, ...]], CollectionSequence[Any]):
         """Gives a string representation of this space."""
         return "Tuple(" + ", ".join([str(s) for s in self.spaces]) + ")"
 
-    def to_jsonable(self, sample_n: TypingSequence[TypingTuple[Any, ...]]) -> List[List[Any]]:
+    def to_jsonable(
+        self, sample_n: TypingSequence[TypingTuple[Any, ...]]
+    ) -> List[List[Any]]:
         """Convert a batch of samples from this space to a JSONable data type."""
         # serialize as list-repr of tuple of vectors
         return [

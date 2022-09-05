@@ -68,7 +68,10 @@ class Text(Space[str]):
         super().__init__(dtype=str, seed=seed)
 
     def sample(
-        self, mask: Optional[Tuple[Optional[int], Optional[np.ndarray[Any, np.dtype[np.int8]]]]] = None
+        self,
+        mask: Optional[
+            Tuple[Optional[int], Optional[np.ndarray[Any, np.dtype[np.int8]]]]
+        ] = None,
     ) -> str:
         """Generates a single random sample from this space with by default a random length between `min_length` and `max_length` and sampled from the `charset`.
 

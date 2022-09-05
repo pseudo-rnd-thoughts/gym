@@ -9,9 +9,9 @@ from typing import (
     Optional,
     Sequence,
     Tuple,
+    Type,
     TypeVar,
     Union,
-    Type
 )
 
 import numpy as np
@@ -79,7 +79,7 @@ class Space(Generic[T_cov]):
             self.seed()
 
         assert isinstance(self._np_random, np.random.Generator)
-        return self._np_random  ## self.seed() call guarantees right type.
+        return self._np_random
 
     @property
     def shape(self) -> Optional[Tuple[int, ...]]:

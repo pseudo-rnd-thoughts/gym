@@ -3,14 +3,14 @@
 These functions mostly take care of flattening and unflattening elements of spaces
  to facilitate their usage in learning code.
 """
-# pyright: reportUnusedFunction=none
-
 import operator as op
 from collections import OrderedDict
 from functools import reduce, singledispatch
-from typing import Dict as TypingDict, Optional
+from typing import Any
+from typing import Dict as TypingDict
+from typing import Optional
 from typing import Tuple as TypingTuple
-from typing import TypeVar, Union, cast, Any
+from typing import TypeVar, Union, cast
 
 import numpy as np
 from numpy.typing import NDArray
@@ -51,7 +51,7 @@ def flatdim(space: Space[Any]) -> int:
          NotImplementedError: if the space is not defined in ``gym.spaces``.
          ValueError: if the space cannot be flattened into a :class:`Box`
     """
-    if not space.is_np_flattenable:
+    if space.is_np_flattenable is False:
         raise ValueError(
             f"{space} cannot be flattened to a numpy array, probably because it contains a `Graph` or `Sequence` subspace"
         )
@@ -106,7 +106,9 @@ def _flatdim_text(space: Text) -> int:
 
 
 T = TypeVar("T")
-FlatType = Union[NDArray[Any], TypingDict[str, Any], TypingTuple[Any, ...], GraphInstance]
+FlatType = Union[
+    NDArray[Any], TypingDict[str, Any], TypingTuple[Any, ...], GraphInstance
+]
 
 
 @singledispatch
@@ -141,7 +143,9 @@ def flatten(space: Space[T], x: T) -> FlatType:
 
 @flatten.register(Box)
 @flatten.register(MultiBinary)
-def _flatten_box_multibinary(space: Union[Box, MultiBinary], x: NDArray[Any]) -> NDArray[Any]:
+def _flatten_box_multibinary(
+    space: Union[Box, MultiBinary], x: NDArray[Any]
+) -> NDArray[Any]:
     return np.asarray(x, dtype=space.dtype).flatten()
 
 
@@ -153,7 +157,9 @@ def _flatten_discrete(space: Discrete, x: int) -> NDArray[np.int64]:
 
 
 @flatten.register(MultiDiscrete)
-def _flatten_multidiscrete(space: MultiDiscrete, x: NDArray[np.int64]) -> NDArray[np.int64]:
+def _flatten_multidiscrete(
+    space: MultiDiscrete, x: NDArray[np.int64]
+) -> NDArray[np.int64]:
     offsets = np.zeros((space.nvec.size + 1,), dtype=space.dtype)
     offsets[1:] = np.cumsum(space.nvec.flatten())
 
@@ -163,7 +169,9 @@ def _flatten_multidiscrete(space: MultiDiscrete, x: NDArray[np.int64]) -> NDArra
 
 
 @flatten.register(Tuple)
-def _flatten_tuple(space: Tuple, x: TypingTuple[Any, ...]) -> Union[TypingTuple[Any, ...], NDArray[Any]]:
+def _flatten_tuple(
+    space: Tuple, x: TypingTuple[Any, ...]
+) -> Union[TypingTuple[Any, ...], NDArray[Any]]:
     if space.is_np_flattenable:
         return np.concatenate(
             [flatten(s, x_part) for x_part, s in zip(x, space.spaces)]
@@ -172,7 +180,9 @@ def _flatten_tuple(space: Tuple, x: TypingTuple[Any, ...]) -> Union[TypingTuple[
 
 
 @flatten.register(Dict)
-def _flatten_dict(space: Dict, x: TypingDict[str, Any]) -> Union[TypingDict[str, Any], NDArray[Any]]:
+def _flatten_dict(
+    space: Dict, x: TypingDict[str, Any]
+) -> Union[TypingDict[str, Any], NDArray[Any]]:
     if space.is_np_flattenable:
         return np.concatenate([flatten(s, x[key]) for key, s in space.spaces.items()])
     return OrderedDict((key, flatten(s, x[key])) for key, s in space.spaces.items())
@@ -182,7 +192,10 @@ def _flatten_dict(space: Dict, x: TypingDict[str, Any]) -> Union[TypingDict[str,
 def _flatten_graph(space: Graph, x: GraphInstance) -> GraphInstance:
     """We're not using `.unflatten() for :class:`Box` and :class:`Discrete` because a graph is not a homogeneous space, see `.flatten` docstring."""
 
-    def _graph_unflatten(unflatten_space: Optional[Union[Discrete, Box]], unflatten_x: Optional[NDArray[Any]]) -> Optional[NDArray[Any]]:
+    def _graph_unflatten(
+        unflatten_space: Optional[Union[Discrete, Box]],
+        unflatten_x: Optional[NDArray[Any]],
+    ) -> Optional[NDArray[Any]]:
         ret = None
         if unflatten_space is not None and unflatten_x is not None:
             if isinstance(unflatten_space, Box):
@@ -216,7 +229,9 @@ def _flatten_text(space: Text, x: str) -> NDArray[np.int32]:
 
 
 @flatten.register(Sequence)
-def _flatten_sequence(space: Sequence, x: TypingTuple[Any, ...]) -> TypingTuple[Any, ...]:
+def _flatten_sequence(
+    space: Sequence, x: TypingTuple[Any, ...]
+) -> TypingTuple[Any, ...]:
     return tuple(flatten(space.feature_space, item) for item in x)
 
 
@@ -254,7 +269,9 @@ def _unflatten_discrete(space: Discrete, x: NDArray[np.int64]) -> int:
 
 
 @unflatten.register(MultiDiscrete)
-def _unflatten_multidiscrete(space: MultiDiscrete, x: NDArray[np.int32]) -> NDArray[np.int32]:
+def _unflatten_multidiscrete(
+    space: MultiDiscrete, x: NDArray[np.int32]
+) -> NDArray[np.int32]:
     offsets = np.zeros((space.nvec.size + 1,), dtype=space.dtype)
     offsets[1:] = np.cumsum(space.nvec.flatten())
 
@@ -263,7 +280,9 @@ def _unflatten_multidiscrete(space: MultiDiscrete, x: NDArray[np.int32]) -> NDAr
 
 
 @unflatten.register(Tuple)
-def _unflatten_tuple(space: Tuple, x: Union[NDArray[Any], TypingTuple[Any, ...]]) -> TypingTuple[Any, ...]:
+def _unflatten_tuple(
+    space: Tuple, x: Union[NDArray[Any], TypingTuple[Any, ...]]
+) -> TypingTuple[Any, ...]:
     if space.is_np_flattenable:
         assert isinstance(
             x, np.ndarray
@@ -281,7 +300,9 @@ def _unflatten_tuple(space: Tuple, x: Union[NDArray[Any], TypingTuple[Any, ...]]
 
 
 @unflatten.register(Dict)
-def _unflatten_dict(space: Dict, x: Union[NDArray[Any], TypingDict[str, Any]]) -> TypingDict[str, Any]:
+def _unflatten_dict(
+    space: Dict, x: Union[NDArray[Any], TypingDict[str, Any]]
+) -> TypingDict[str, Any]:
     if space.is_np_flattenable:
         dims = np.asarray([flatdim(s) for s in space.spaces.values()], dtype=np.int_)
         list_flattened = np.split(x, np.cumsum(dims[:-1]))
@@ -328,7 +349,9 @@ def _unflatten_text(space: Text, x: NDArray[np.int32]) -> str:
 
 
 @unflatten.register(Sequence)
-def _unflatten_sequence(space: Sequence, x: TypingTuple[Any, ...]) -> TypingTuple[Any, ...]:
+def _unflatten_sequence(
+    space: Sequence, x: TypingTuple[Any, ...]
+) -> TypingTuple[Any, ...]:
     return tuple(unflatten(space.feature_space, item) for item in x)
 
 

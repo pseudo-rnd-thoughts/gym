@@ -1,6 +1,8 @@
 """Implementation of a space that represents finite-length sequences."""
 from collections.abc import Sequence as CollectionSequence
-from typing import Any, List, Optional, Tuple, Union, Type, Sequence as TypingSequence
+from typing import Any, List, Optional
+from typing import Sequence as TypingSequence
+from typing import Tuple, Type, Union
 
 import numpy as np
 
@@ -54,7 +56,17 @@ class Sequence(Space[Tuple[Any, ...]]):
 
     def sample(
         self,
-        mask: Optional[Tuple[Optional[Union[Type[np.integer[Any]], np.ndarray[Any, np.dtype[np.integer[Any]]]]], Optional[Any]]] = None,
+        mask: Optional[
+            Tuple[
+                Optional[
+                    Union[
+                        Type[np.integer[Any]],
+                        np.ndarray[Any, np.dtype[np.integer[Any]]],
+                    ]
+                ],
+                Optional[Any],
+            ]
+        ] = None,
     ) -> Tuple[Any]:
         """Generates a single random sample from this space.
 

@@ -1,7 +1,8 @@
 """Implementation of a space that consists of binary np.ndarrays of a fixed shape."""
-from typing import Optional, Sequence, Tuple, Union, Any, List
+from typing import Any, List, Optional, Sequence, Tuple, Union
 
 import numpy as np
+from numpy.typing import NDArray
 
 from gym.spaces.space import Space
 
@@ -25,7 +26,7 @@ class MultiBinary(Space[np.ndarray[Any, np.dtype[np.int8]]]):
 
     def __init__(
         self,
-        n: Union[np.ndarray[Any, np.dtype[Any]], Sequence[int], int],
+        n: Union[NDArray[Any], Sequence[int], int],
         seed: Optional[Union[int, np.random.Generator]] = None,
     ):
         """Constructor of :class:`MultiBinary` space.
@@ -55,7 +56,9 @@ class MultiBinary(Space[np.ndarray[Any, np.dtype[np.int8]]]):
         """Checks whether this space can be flattened to a :class:`spaces.Box`."""
         return True
 
-    def sample(self, mask: Optional[np.ndarray[Any, np.dtype[np.int8]]] = None) -> np.ndarray[Any, np.dtype[np.int8]]:
+    def sample(
+        self, mask: Optional[np.ndarray[Any, np.dtype[np.int8]]] = None
+    ) -> np.ndarray[Any, np.dtype[np.int8]]:
         """Generates a single random sample from this space.
 
         A sample is drawn by independent, fair coin tosses (one toss per binary variable of the space).
@@ -101,11 +104,15 @@ class MultiBinary(Space[np.ndarray[Any, np.dtype[np.int8]]]):
             and np.all((x == 0) | (x == 1))
         )
 
-    def to_jsonable(self, sample_n: Sequence[np.ndarray[Any, np.dtype[np.int8]]]) -> List[Sequence[int]]:
+    def to_jsonable(
+        self, sample_n: Sequence[np.ndarray[Any, np.dtype[np.int8]]]
+    ) -> List[Sequence[int]]:
         """Convert a batch of samples from this space to a JSONable data type."""
         return np.array(sample_n).tolist()
 
-    def from_jsonable(self, sample_n: List[Sequence[int]]) -> List[np.ndarray[Any, np.dtype[np.int8]]]:
+    def from_jsonable(
+        self, sample_n: List[Sequence[int]]
+    ) -> List[np.ndarray[Any, np.dtype[np.int8]]]:
         """Convert a JSONable data type to a batch of samples from this space."""
         return [np.asarray(sample, self.dtype) for sample in sample_n]
 
