@@ -1,5 +1,5 @@
 """Implementation of a space that represents closed boxes in euclidean space."""
-from typing import Dict, List, Optional, Sequence, SupportsFloat, Tuple, Type, Union
+from typing import List, Optional, Sequence, SupportsFloat, Tuple, Type, Union, Any, Iterable, Mapping
 
 import numpy as np
 
@@ -8,7 +8,7 @@ from gym import logger
 from gym.spaces.space import Space
 
 
-def _short_repr(arr: np.ndarray) -> str:
+def _short_repr(arr: np.ndarray[Any, Any]) -> str:
     """Create a shortened string representation of a numpy array.
 
     If arr is a multiple of the all-ones vector, return a string representation of the multiplier.
@@ -20,17 +20,17 @@ def _short_repr(arr: np.ndarray) -> str:
     Returns:
         A short representation of the array
     """
-    if arr.size != 0 and np.min(arr) == np.max(arr):
-        return str(np.min(arr))
+    if arr.size != 0 and np.min(arr) == np.max(arr):   
+        return str(np.min(arr))  
     return str(arr)
 
 
-def is_float_integer(var) -> bool:
+def is_float_integer(var: Any) -> bool:
     """Checks if a variable is an integer or float."""
-    return np.issubdtype(type(var), np.integer) or np.issubdtype(type(var), np.floating)
+    return np.issubdtype(type(var), np.integer) or np.issubdtype(type(var), np.floating) 
 
 
-class Box(Space[np.ndarray]):
+class Box(Space[np.ndarray[Any, Any]]):
     r"""A (possibly unbounded) box in :math:`\mathbb{R}^n`.
 
     Specifically, a Box represents the Cartesian product of n closed intervals.
@@ -52,10 +52,10 @@ class Box(Space[np.ndarray]):
 
     def __init__(
         self,
-        low: Union[SupportsFloat, np.ndarray],
-        high: Union[SupportsFloat, np.ndarray],
+        low: Union[SupportsFloat, np.ndarray[Any, Any]],
+        high: Union[SupportsFloat, np.ndarray[Any, Any]],
         shape: Optional[Sequence[int]] = None,
-        dtype: Type = np.float32,
+        dtype: Union[Type[np.floating[Any]], Type[np.integer[Any]]] = np.float32,
         seed: Optional[Union[int, np.random.Generator]] = None,
     ):
         r"""Constructor of :class:`Box`.
@@ -86,7 +86,7 @@ class Box(Space[np.ndarray]):
         # determine shape if it isn't provided directly
         if shape is not None:
             assert all(
-                np.issubdtype(type(dim), np.integer) for dim in shape
+                np.issubdtype(type(dim), np.integer) for dim in shape 
             ), f"Expect all shape elements to be an integer, actual type: {tuple(type(dim) for dim in shape)}"
             shape = tuple(int(dim) for dim in shape)  # This changes any np types to int
         elif isinstance(low, np.ndarray):
@@ -102,12 +102,12 @@ class Box(Space[np.ndarray]):
 
         # Capture the boundedness information before replacing np.inf with get_inf
         _low = np.full(shape, low, dtype=float) if is_float_integer(low) else low
-        self.bounded_below = -np.inf < _low
+        self.bounded_below: bool = -np.inf < _low  
         _high = np.full(shape, high, dtype=float) if is_float_integer(high) else high
-        self.bounded_above = np.inf > _high
+        self.bounded_above: bool = np.inf > _high
 
-        low = _broadcast(low, dtype, shape, inf_sign="-")  # type: ignore
-        high = _broadcast(high, dtype, shape, inf_sign="+")  # type: ignore
+        low: np.ndarray[Any, np.dtype[Any]] = _broadcast(low, dtype, shape, inf_sign="-")
+        high: np.ndarray[Any, np.dtype[Any]] = _broadcast(high, dtype, shape, inf_sign="+")
 
         assert isinstance(low, np.ndarray)
         assert (
@@ -123,7 +123,7 @@ class Box(Space[np.ndarray]):
         low_precision = get_precision(low.dtype)
         high_precision = get_precision(high.dtype)
         dtype_precision = get_precision(self.dtype)
-        if min(low_precision, high_precision) > dtype_precision:  # type: ignore
+        if min(low_precision, high_precision) > dtype_precision:  
             logger.warn(f"Box bound precision lowered by casting to {self.dtype}")
         self.low = low.astype(self.dtype)
         self.high = high.astype(self.dtype)
@@ -168,7 +168,7 @@ class Box(Space[np.ndarray]):
                 f"manner is not in {{'below', 'above', 'both'}}, actual value: {manner}"
             )
 
-    def sample(self, mask: None = None) -> np.ndarray:
+    def sample(self, mask: None = None) -> np.ndarray[Any, np.dtype[Any]]:
         r"""Generates a single random sample inside the Box.
 
         In creating a sample of the box, each coordinate is sampled (independently) from a distribution
@@ -221,7 +221,7 @@ class Box(Space[np.ndarray]):
 
         return sample.astype(self.dtype)
 
-    def contains(self, x) -> bool:
+    def contains(self, x: Any) -> bool:
         """Return boolean specifying if x is a valid member of this space."""
         if not isinstance(x, np.ndarray):
             logger.warn("Casting input x to numpy array.")
@@ -237,11 +237,11 @@ class Box(Space[np.ndarray]):
             and np.all(x <= self.high)
         )
 
-    def to_jsonable(self, sample_n):
+    def to_jsonable(self, sample_n: Sequence[np.ndarray[Any, np.dtype[Any]]]) -> List[np.ndarray[Any, np.dtype[Any]]]:
         """Convert a batch of samples from this space to a JSONable data type."""
         return np.array(sample_n).tolist()
 
-    def from_jsonable(self, sample_n: Sequence[Union[float, int]]) -> List[np.ndarray]:
+    def from_jsonable(self, sample_n: Sequence[Union[float, int]]) -> List[np.ndarray[Any, np.dtype[Any]]]:
         """Convert a JSONable data type to a batch of samples from this space."""
         return [np.asarray(sample) for sample in sample_n]
 
@@ -256,7 +256,7 @@ class Box(Space[np.ndarray]):
         """
         return f"Box({self.low_repr}, {self.high_repr}, {self.shape}, {self.dtype})"
 
-    def __eq__(self, other) -> bool:
+    def __eq__(self, other: object) -> bool:
         """Check whether `other` is equivalent to this instance. Doesn't check dtype equivalence."""
         return (
             isinstance(other, Box)
@@ -266,7 +266,7 @@ class Box(Space[np.ndarray]):
             and np.allclose(self.high, other.high)
         )
 
-    def __setstate__(self, state: Dict):
+    def __setstate__(self, state: Union[Iterable[Tuple[str, Any]], Mapping[str, Any]]):
         """Sets the state of the box for unpickling a box with legacy support."""
         super().__setstate__(state)
 
@@ -278,7 +278,7 @@ class Box(Space[np.ndarray]):
             self.high_repr = _short_repr(self.high)
 
 
-def get_inf(dtype, sign: str) -> SupportsFloat:
+def get_inf(dtype: np.dtype[Any], sign: str) -> SupportsFloat:
     """Returns an infinite that doesn't break things.
 
     Args:
@@ -310,7 +310,7 @@ def get_inf(dtype, sign: str) -> SupportsFloat:
         raise ValueError(f"Unknown dtype {dtype} for infinite bounds")
 
 
-def get_precision(dtype) -> SupportsFloat:
+def get_precision(dtype: np.dtype[Any]) -> SupportsFloat:
     """Get precision of a data type."""
     if np.issubdtype(dtype, np.floating):
         return np.finfo(dtype).precision
@@ -319,14 +319,14 @@ def get_precision(dtype) -> SupportsFloat:
 
 
 def _broadcast(
-    value: Union[SupportsFloat, np.ndarray],
-    dtype,
+    value: Union[SupportsFloat, np.ndarray[Any, np.dtype[Any]]],
+    dtype: np.dtype[Any],
     shape: Tuple[int, ...],
     inf_sign: str,
-) -> np.ndarray:
+) -> np.ndarray[Any, np.dtype[Any]]:
     """Handle infinite bounds and broadcast at the same time if needed."""
     if is_float_integer(value):
-        value = get_inf(dtype, inf_sign) if np.isinf(value) else value  # type: ignore
+        value = get_inf(dtype, inf_sign) if np.isinf(value) else value 
         value = np.full(shape, value, dtype=dtype)
     else:
         assert isinstance(value, np.ndarray)

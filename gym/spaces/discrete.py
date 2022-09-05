@@ -1,12 +1,12 @@
 """Implementation of a space consisting of finitely many elements."""
-from typing import Optional, Union
+from typing import Optional, Union, Any, Iterable, Tuple, Mapping, Type
 
 import numpy as np
 
 from gym.spaces.space import Space
 
 
-class Discrete(Space[int]):
+class Discrete(Space[np.integer[Any]]):
     r"""A space consisting of finitely many elements.
 
     This class represents a finite subset of integers, more specifically a set of the form :math:`\{ a, a+1, \dots, a+n-1 \}`.
@@ -21,6 +21,7 @@ class Discrete(Space[int]):
         self,
         n: int,
         seed: Optional[Union[int, np.random.Generator]] = None,
+        dtype: Type[np.integer[Any]] = np.int32,
         start: int = 0,
     ):
         r"""Constructor of :class:`Discrete` space.
@@ -35,16 +36,18 @@ class Discrete(Space[int]):
         assert isinstance(n, (int, np.integer))
         assert n > 0, "n (counts) have to be positive"
         assert isinstance(start, (int, np.integer))
-        self.n = int(n)
-        self.start = int(start)
-        super().__init__((), np.int64, seed)
+
+        self.n = n
+        self.start = start
+
+        super().__init__(shape=(), dtype=np.int64, seed=seed)
 
     @property
     def is_np_flattenable(self):
         """Checks whether this space can be flattened to a :class:`spaces.Box`."""
         return True
 
-    def sample(self, mask: Optional[np.ndarray] = None) -> int:
+    def sample(self, mask: Optional[np.ndarray[Any, np.dtype[np.int8]]] = None) -> np.integer[Any]:
         """Generates a single random sample from this space.
 
         A sample will be chosen uniformly at random with the mask if provided
@@ -68,26 +71,24 @@ class Discrete(Space[int]):
                 self.n,
             ), f"The expected shape of the mask is {(self.n,)}, actual shape: {mask.shape}"
             valid_action_mask = mask == 1
-            assert np.all(
-                np.logical_or(mask == 0, valid_action_mask)
+            assert np.all(  
+                np.logical_or(mask == 0, valid_action_mask)  
             ), f"All values of a mask should be 0 or 1, actual values: {mask}"
-            if np.any(valid_action_mask):
-                return int(
-                    self.start + self.np_random.choice(np.where(valid_action_mask)[0])
-                )
+            if np.any(valid_action_mask):  
+                return self.start + self.np_random.choice(np.where(valid_action_mask)[0])  
             else:
                 return self.start
 
-        return int(self.start + self.np_random.integers(self.n))
+        return self.start + self.np_random.integers(self.n, dtype=self.dtype) 
 
-    def contains(self, x) -> bool:
+    def contains(self, x: Any) -> bool:
         """Return boolean specifying if x is a valid member of this space."""
         if isinstance(x, int):
             as_int = x
         elif isinstance(x, (np.generic, np.ndarray)) and (
-            np.issubdtype(x.dtype, np.integer) and x.shape == ()
+            np.issubdtype(x.dtype, np.integer) and x.shape == ()  
         ):
-            as_int = int(x)  # type: ignore
+            as_int = int(x)  
         else:
             return False
 
@@ -99,7 +100,7 @@ class Discrete(Space[int]):
             return f"Discrete({self.n}, start={self.start})"
         return f"Discrete({self.n})"
 
-    def __eq__(self, other) -> bool:
+    def __eq__(self, other: Any) -> bool:
         """Check whether ``other`` is equivalent to this instance."""
         return (
             isinstance(other, Discrete)
@@ -107,7 +108,7 @@ class Discrete(Space[int]):
             and self.start == other.start
         )
 
-    def __setstate__(self, state):
+    def __setstate__(self, state: Union[Iterable[Tuple[str, Any]], Mapping[str, Any]]):
         """Used when loading a pickled space.
 
         This method has to be implemented explicitly to allow for loading of legacy states.

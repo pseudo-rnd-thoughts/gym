@@ -66,6 +66,8 @@ def test_step_compatibility_in_make(apply_step_compatibility):
         )
     elif apply_step_compatibility is None:
         env = gym.make("OldStepEnv-v0", disable_env_checker=True)
+    else:
+        raise TypeError
 
     env.reset()
     step_returns = env.step(0)

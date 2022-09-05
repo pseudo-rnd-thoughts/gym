@@ -1,14 +1,14 @@
 """Implementation of a space that represents the cartesian product of `Discrete` spaces."""
-from typing import Iterable, List, Optional, Sequence, Tuple, Union
+from typing import Iterable, List, Optional, Sequence, Tuple, Union, Any, Type
 
 import numpy as np
 
 from gym import logger
 from gym.spaces.discrete import Discrete
-from gym.spaces.space import Space
+from gym.spaces.space import Space, MASK_NDARRAY
 
 
-class MultiDiscrete(Space[np.ndarray]):
+class MultiDiscrete(Space[np.ndarray[Any, np.dtype[np.integer[Any]]]]):
     """This represents the cartesian product of arbitrary :class:`Discrete` spaces.
 
     It is useful to represent game controllers or keyboards where each key can be represented as a discrete action space.
@@ -37,8 +37,8 @@ class MultiDiscrete(Space[np.ndarray]):
 
     def __init__(
         self,
-        nvec: Union[np.ndarray, list],
-        dtype=np.int64,
+        nvec: Union[np.ndarray[Any, np.dtype[np.integer[Any]]], List[int]],
+        dtype: Union[str, Type[np.integer[Any]]] = np.int64,
         seed: Optional[Union[int, np.random.Generator]] = None,
     ):
         """Constructor of :class:`MultiDiscrete` space.
@@ -66,7 +66,7 @@ class MultiDiscrete(Space[np.ndarray]):
         """Checks whether this space can be flattened to a :class:`spaces.Box`."""
         return True
 
-    def sample(self, mask: Optional[tuple] = None) -> np.ndarray:
+    def sample(self, mask: Optional[Tuple[MASK_NDARRAY]] = None) -> np.ndarray[Any, np.dtype[np.integer[Any]]]:
         """Generates a single random sample this space.
 
         Args:
@@ -80,9 +80,9 @@ class MultiDiscrete(Space[np.ndarray]):
         if mask is not None:
 
             def _apply_mask(
-                sub_mask: Union[np.ndarray, tuple],
-                sub_nvec: Union[np.ndarray, np.integer],
-            ) -> Union[int, List[int]]:
+                sub_mask: Union[MASK_NDARRAY, Tuple[MASK_NDARRAY]],
+                sub_nvec: Union[MASK_NDARRAY, np.integer[Any]],
+            ) -> Union[int, Sequence[int]]:
                 if isinstance(sub_nvec, np.ndarray):
                     assert isinstance(
                         sub_mask, tuple
@@ -122,7 +122,7 @@ class MultiDiscrete(Space[np.ndarray]):
 
         return (self.np_random.random(self.nvec.shape) * self.nvec).astype(self.dtype)
 
-    def contains(self, x) -> bool:
+    def contains(self, x: Any) -> bool:
         """Return boolean specifying if x is a valid member of this space."""
         if isinstance(x, Sequence):
             x = np.array(x)  # Promote list to array for contains check
@@ -137,11 +137,11 @@ class MultiDiscrete(Space[np.ndarray]):
             and np.all(x < self.nvec)
         )
 
-    def to_jsonable(self, sample_n: Iterable[np.ndarray]):
+    def to_jsonable(self, sample_n: Sequence[np.ndarray[Any, np.dtype[np.integer[Any]]]]) -> List[Sequence[int]]:
         """Convert a batch of samples from this space to a JSONable data type."""
         return [sample.tolist() for sample in sample_n]
 
-    def from_jsonable(self, sample_n):
+    def from_jsonable(self, sample_n: List[Sequence[int]]) -> List[np.ndarray[Any, np.dtype[np.integer[Any]]]]:
         """Convert a JSONable data type to a batch of samples from this space."""
         return np.array(sample_n)
 
@@ -149,7 +149,7 @@ class MultiDiscrete(Space[np.ndarray]):
         """Gives a string representation of this space."""
         return f"MultiDiscrete({self.nvec})"
 
-    def __getitem__(self, index):
+    def __getitem__(self, index: int):
         """Extract a subspace from this ``MultiDiscrete`` space."""
         nvec = self.nvec[index]
         if nvec.ndim == 0:
@@ -170,6 +170,6 @@ class MultiDiscrete(Space[np.ndarray]):
             )
         return len(self.nvec)
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         """Check whether ``other`` is equivalent to this instance."""
-        return isinstance(other, MultiDiscrete) and np.all(self.nvec == other.nvec)
+        return bool(isinstance(other, MultiDiscrete) and np.all(self.nvec == other.nvec))

@@ -1,5 +1,5 @@
 """Implementation of a space that represents graph information where nodes and edges can be represented with euclidean space."""
-from typing import NamedTuple, Optional, Sequence, Tuple, Union
+from typing import NamedTuple, Optional, Sequence, Tuple, Union, Any, Dict, List
 
 import numpy as np
 
@@ -17,13 +17,12 @@ class GraphInstance(NamedTuple):
     * edges (Optional[np.ndarray]): an (m x ...) sized array representing the features for m nodes, (...) must adhere to the shape of the edge space.
     * edge_links (Optional[np.ndarray]): an (m x 2) sized array of ints representing the two nodes that each edge connects.
     """
+    nodes: np.ndarray[Any, np.dtype[Any]]
+    edges: Optional[np.ndarray[Any, np.dtype[Any]]]
+    edge_links: Optional[np.ndarray[Any, np.dtype[Any]]]
 
-    nodes: np.ndarray
-    edges: Optional[np.ndarray]
-    edge_links: Optional[np.ndarray]
 
-
-class Graph(Space):
+class Graph(Space[GraphInstance]):
     r"""A space representing graph information as a series of `nodes` connected with `edges` according to an adjacency matrix represented as a series of `edge_links`.
 
     Example usage::
@@ -93,8 +92,8 @@ class Graph(Space):
         self,
         mask: Optional[
             Tuple[
-                Optional[Union[np.ndarray, tuple]],
-                Optional[Union[np.ndarray, tuple]],
+                Optional[Union[np.ndarray[Any, np.dtype[Any]], Tuple[Any]]],
+                Optional[Union[np.ndarray[Any, np.dtype[Any]], Tuple[Any]]],
             ]
         ] = None,
         num_nodes: int = 10,
@@ -197,7 +196,7 @@ class Graph(Space):
         """
         return f"Graph({self.node_space}, {self.edge_space})"
 
-    def __eq__(self, other) -> bool:
+    def __eq__(self, other: object) -> bool:
         """Check whether `other` is equivalent to this instance."""
         return (
             isinstance(other, Graph)
@@ -205,10 +204,9 @@ class Graph(Space):
             and (self.edge_space == other.edge_space)
         )
 
-    def to_jsonable(self, sample_n: NamedTuple) -> list:
+    def to_jsonable(self, sample_n: Sequence[GraphInstance]) -> List[Dict[str, List[Union[int, float]]]]:
         """Convert a batch of samples from this space to a JSONable data type."""
-        # serialize as list of dicts
-        ret_n = []
+        ret_n: List[Dict[str, List[Union[int, float]]]]= []
         for sample in sample_n:
             ret = {}
             ret["nodes"] = sample.nodes.tolist()
@@ -218,9 +216,9 @@ class Graph(Space):
             ret_n.append(ret)
         return ret_n
 
-    def from_jsonable(self, sample_n: Sequence[dict]) -> list:
+    def from_jsonable(self, sample_n: Sequence[Dict[str, List[Union[int, float]]]]) -> List[GraphInstance]:
         """Convert a JSONable data type to a batch of samples from this space."""
-        ret = []
+        ret: List[GraphInstance] = []
         for sample in sample_n:
             if "edges" in sample:
                 ret_n = GraphInstance(
